@@ -1,0 +1,24 @@
+{
+    "config": {
+        "compression": "lzma"
+    },
+    "basics": {
+        "include_files": ["!(?i)license\\\\.txt", "version.txt", "cargozhip.json"],
+        "exclude_files": ["**/secret_key.h"]
+    },
+    "dev": {
+        "inherit": ["basics"],
+        "include_files": ["*.h", "*.a", "*CMakeLists.txt"],
+        "include_dirs": ["art"],
+        "exclude_dirs": ["test"]
+    },
+    "rel": {
+        "inherit": ["basics"],
+        "include_files": ["*.so*"],
+        "exclude_files": ["*.song"]
+    },
+    "production": {
+        "inherit": ["basics", "rel"],
+        "exclude_files": ["cargozhip.json"]
+    }
+}

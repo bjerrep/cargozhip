@@ -1,0 +1,9 @@
+*lzma
+*bz2
+*zip
+
+
+__pycache__
+
+
+.idea
