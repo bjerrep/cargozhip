@@ -3,7 +3,7 @@
         "compression": "lzma"
     },
     "basics": {
-        "include_files": ["!(?i)license\\\\.txt", "version.txt", "cargozhip.json"],
+        "include_files": ["!(?i)license\\.txt", "version.txt", "cargozhip.json"],
         "exclude_files": ["**/secret_key.h"]
     },
     "dev": {
