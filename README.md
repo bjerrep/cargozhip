@@ -25,6 +25,18 @@ optional arguments:
 
 
 
+## Manifest 
+
+A manifest is a json file intended to reside in each asset in scope.
+
+As advertised it contains separate entries for files and directories to include and/or exclude for the given asset. The full feature set can be seen in testlib/cargozhip.json.
+
+Files and directories can be specified in two flavors, either default as "unix filename pattern matching" as used by the python fnmatch module or if starting with a "!" as a regex.
+
+Expect the outcome of a lot of intertwined including and excluding to be at least unpredictable. Either make rules more explicit, or better, fix the code.
+
+
+
 ## Compressing the demo 'testlib' asset.
 
 ```
