@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, time, argparse, json, glob, zipfile
+import os, time, argparse, json, glob, zipfile, tarfile
 from cz import *
 
 folderfrag_manifest = 'cargozhip.json'
@@ -46,6 +46,9 @@ if not args.archive:
 else:
     archive = args.archive
 
+zipfile_compression = None
+tarfile_compression = None
+
 try:
     if config['compression'] == 'lzma':
         zipfile_compression = zipfile.ZIP_LZMA
@@ -53,10 +56,19 @@ try:
     elif config['compression'] == 'bz2':
         zipfile_compression = zipfile.ZIP_BZIP2
         archive = archive + '.bz2'
-    else:
+    elif config['compression'] == 'zip':
         zipfile_compression = zipfile.ZIP_DEFLATED
         archive = archive + '.zip'
+    elif config['compression'] == 'tar.gz':
+        tarfile_compression = 'w:gz'
+        archive = archive + '.tar.gz'
+    elif config['compression'] == 'tar.bz2':
+        tarfile_compression = 'w:bz2'
+        archive = archive + '.tar.bz2'
+    else:
+        fat(f'Dont understand the compression {config["compression"]} ?')
 except:
+    inf('Defaulting to zip compression')
     zipfile_compression = zipfile.ZIP_DEFLATED
     archive = archive + '.zip'
 
@@ -94,13 +106,23 @@ inf(f'Scanned {nof_files_processed} files and {nof_dirs_processed} directories i
 inf(f'Compressing {len(file_list)} files and {len(dir_list)} directories ...')
 now = time.time()
 os.chdir(root)
-with zipfile.ZipFile(archive, 'w', zipfile_compression) as _zipfile:
-    for _file in file_list:
-        _zipfile.write(_file)
-    for _dir in dir_list:
-        files = glob.glob(_dir + '/**', recursive=True)
-        for _file in files:
+
+if zipfile_compression:
+    with zipfile.ZipFile(archive, 'w', zipfile_compression) as _zipfile:
+        for _file in file_list:
             _zipfile.write(_file)
+        for _dir in dir_list:
+            files = glob.glob(_dir + '/**', recursive=True)
+            for _file in files:
+                _zipfile.write(_file)
+elif tarfile_compression:
+    with tarfile.open(archive, tarfile_compression) as _tarfile:
+        for _file in file_list:
+            _tarfile.add(_file)
+        for _dir in dir_list:
+            _tarfile.add(_dir)
+else:
+    fat('internal error, bailing out')
 
 # step 5/5, we are done
 

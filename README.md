@@ -25,13 +25,29 @@ optional arguments:
 
 
 
+## Compression formats
+
+By using the native python compression modules the supported formats are:
+
+- zip
+
+- bz2
+
+- lzma
+
+- tar.gz
+
+- tar.bz2
+
+
+
 ## Config 
 
 A config file is a json file intended to reside in each asset cargozhip should work with.
 
-As advertised it contains separate entries for files and directories to include and/or exclude for the given asset. The full feature set can be seen in testlib/cargozhip.json.
+As advertised it contains separate entries for files and directories to include and/or exclude for the given asset. The full feature set can be seen in **testlib/cargozhip.json**.
 
-Files and directories can be specified in two flavors, either default as "unix filename pattern matching" as used by the python fnmatch module or if starting with a "!" as a regex.
+Files and directories can be specified in two flavors, either default as "unix filename pattern matching" as used by the python fnmatch module or if starting with a "!", as a regex.
 
 Expect the outcome of a lot of intertwined including and excluding to be at least unpredictable. Either make more explicit rules or, well, fix the code.
 
