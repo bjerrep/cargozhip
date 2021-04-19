@@ -98,3 +98,15 @@ drwxr-xr-x  2.0 unx        0 b- stor 21-Apr-01 16:23 art/
 
 ```
 
+
+
+## Native python
+
+The work is done by the method compress in the cz_api.py. This is what is used by the cargozhip.py executable script which is just a thin command line argument parser. 
+
+```
+def compress(root, config, section, archive):
+```
+
+
+

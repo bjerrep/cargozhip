@@ -20,9 +20,11 @@ def inf(message):
     print(message)
 
 
-def fat(message):
+def err(message):
     print(message)
-    exit(1)
+
+
+default_config = 'cargozhip.json'
 
 
 def recursive_find_files(package_config, section, include_files=None, include_dirs=None, exclude_files=None, exclude_dirs=None):
