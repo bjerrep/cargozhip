@@ -8,7 +8,7 @@
     },
     "dev": {
         "inherit": ["basics"],
-        "include_files": ["*.h", "*.a", "*CMakeLists.txt"],
+        "include_files": ["**/*.h", "**/*.a", "*CMakeLists.txt"],
         "include_dirs": ["art"],
         "exclude_dirs": ["test"]
     },
@@ -20,5 +20,9 @@
     "production": {
         "inherit": ["basics", "rel"],
         "exclude_files": ["cargozhip.json"]
+    },
+    "test_incl_files_in_bin_excl_bin_subfolders": {
+        "include_dirs": ["bin"],
+        "exclude_dirs": ["bin/*"]
     }
 }

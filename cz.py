@@ -1,60 +1,43 @@
 #!/usr/bin/env python3
-import os, fnmatch, re
-
-GREY = '\033[0;37m'
-RESET = '\033[0m'
-WHITE = '\033[1;37m'
-
-
-def ver(message):
-    # print(f'{WHITE}{message}{RESET}')
-    pass
-
-
-def deb(message):
-    # print(f'{GREY}{message}{RESET}')
-    pass
-
-
-def inf(message):
-    print(message)
-
-
-def err(message):
-    print(message)
+from log import deb
+import os, re
+from wcmatch import glob as wcg
 
 
 default_config = 'cargozhip.json'
 
 
-def recursive_find_files(package_config, section, include_files=None, include_dirs=None, exclude_files=None, exclude_dirs=None):
+def parse_section(config, section, include_files=None, include_dirs=None, exclude_files=None, exclude_dirs=None):
+    """
+    Load the specified section and recursively load upstream sections if found listed in 'inherit'.
+    """
     if not include_files and not include_dirs and not exclude_files and not exclude_dirs:
         include_files = []
         include_dirs = []
         exclude_files = []
         exclude_dirs = []
 
-    _section = package_config[section]
+    _section = config[section]
     try:
-        include_files += _section["include_files"]
+        include_files += _section['include_files']
     except:
         pass
     try:
-        include_dirs += _section["include_dirs"]
+        include_dirs += _section['include_dirs']
     except:
         pass
     try:
-        exclude_files += _section["exclude_files"]
+        exclude_files += _section['exclude_files']
     except:
         pass
     try:
-        exclude_dirs += _section["exclude_dirs"]
+        exclude_dirs += _section['exclude_dirs']
     except:
         pass
 
     try:
-        for include in _section["inherit"]:
-            recursive_find_files(package_config, include, include_files, include_dirs, exclude_files, exclude_dirs)
+        for include in _section['inherit']:
+            parse_section(config, include, include_files, include_dirs, exclude_files, exclude_dirs)
     except:
         pass
     return include_files, include_dirs, exclude_files, exclude_dirs
@@ -64,13 +47,13 @@ files_processed = 0
 dirs_processed = 0
 
 
-def find_files(directory):
+def file_scan(directory):
     global files_processed, dirs_processed
     for root, dirs, files in os.walk(directory):
         root = os.path.relpath(root, directory)
         if root == '.':
             root = ''
-        deb(f'find_files: "{root}" "{dirs}" "{files}"')
+        deb(f'\nscan: cwd:"{root}" dirs:"{dirs}" files:"{files}"')
 
         dirs_processed += len(dirs)
         for _dir in dirs:
@@ -90,54 +73,83 @@ def exclude_file_hit(name, exclude_files):
     for exclude_file in exclude_files:
         if exclude_file[0] == '!':
             if re.search(name, exclude_file[1:]):
-                ver(f'exclude file {name} match with regex {exclude_file}')
+                deb(f'exclude file "{name}" match with regex "{exclude_file}"')
                 return True
-        elif fnmatch.fnmatch(name, exclude_file):
-            ver(f'exclude file {name} match with {exclude_file}')
+        elif wcg.globmatch(name, exclude_file, flags=wcg.GLOBSTAR):
+            deb(f'exclude file "{name}"" match with "{exclude_file}"')
             return True
         else:
-            ver(f'exclude file {name} unmatched with {exclude_file}')
+            deb(f'exclude file "{name}" unmatched with "{exclude_file}"')
     return False
 
 
 def exclude_dir_hit(name, exclude_dirs):
     for exclude_dir in exclude_dirs:
-        for path_component in name.split('/'):
+        if exclude_dir[0] == '!':
+            if re.search(name, exclude_dir[1:]):
+                deb(f'exclude dir  "{name}" match with regex "{exclude_dir}"')
+                return True
+        elif wcg.globmatch(name, exclude_dir, flags=wcg.GLOBSTAR):
+            deb(f'exclude dir  "{name}" match with "{exclude_dir}"')
+            return True
+        else:
+            dir = os.path.dirname(name)
             if exclude_dir[0] == '!':
-                if re.search(path_component, exclude_dir[1:]):
-                    ver(f'exclude dir {name} match with regex {exclude_dir}')
+                if re.search(dir, exclude_dir[1:]):
+                    deb(f'exclude dir  "{name}" match with regex "{exclude_dir}"')
                     return True
-            elif fnmatch.fnmatch(path_component, exclude_dir):
-                ver(f'exclude dir {name} match with {exclude_dir}')
+            elif wcg.globmatch(dir, exclude_dir, flags=wcg.GLOBSTAR):
+                deb(f'exclude dir  "{name}" match with "{exclude_dir}"')
                 return True
             else:
-                ver(f'exclude dir {name} unmatched with {exclude_dir}')
+                deb(f'exclude dir  "{name}" unmatched with "{exclude_dir}"')
     return False
 
 
-def find_files_and_dirs(rootpath, include_files, include_dirs, exclude_files, exclude_dirs):
-    file_list = set()
-    dir_list = set()
-
-    for name, is_dir in find_files(rootpath):
-        if is_dir:
-            if not exclude_dir_hit(name, exclude_dirs):
-                for pattern in include_dirs:
-                    for element in name.split('/'):
-                        if pattern[0] == '!':
-                            if re.search(pattern[1:], element):
-                                dir_list.add(element)
-                        else:
-                            if fnmatch.fnmatch(name, pattern):
-                                dir_list.add(element)
+def include_file_hit(name, include_files):
+    for include_file in include_files:
+        if include_file[0] == '!':
+            if re.search(include_file[1:], name):
+                deb(f'include file "{name}" match with regex "{include_file}"')
+                return True
+        elif wcg.globmatch(name, include_file, flags=wcg.GLOBSTAR):
+            deb(f'include file "{name}" match with "{include_file}"')
+            return True
         else:
-            if not exclude_file_hit(name, exclude_files) and not exclude_dir_hit(name, exclude_dirs):
-                for pattern in include_files:
-                    if pattern[0] == '!':
-                        if re.search(pattern[1:], name):
-                            file_list.add(name)
-                    else:
-                        if fnmatch.fnmatch(name, pattern):
-                            file_list.add(name)
+            deb(f'include file "{name}" unmatched with "{include_file}"')
+    return False
 
-    return file_list, dir_list
+
+def include_dir_hit(name, include_dirs):
+    for include_dir in include_dirs:
+        if include_dir[0] == '!':
+            if re.search(include_dir[1:], name):
+                deb(f'include dir  "{name}" match with regex "{include_dir}"')
+                return True
+        elif wcg.globmatch(name, include_dir, flags=wcg.GLOBSTAR):
+            deb(f'include dir  "{name}" match with "{include_dir}"')
+            return True
+        else:
+            deb(f'include dir  "{name}" unmatched with "{include_dir}"')
+    return False
+
+
+def find_files(root_path, include_files, include_dirs, exclude_files, exclude_dirs):
+    """
+    The include_... and exclude_... functions above and this function were made before starting
+    using the wcmatch library. It should be possible to replace it all with wcmatch but that
+    will be another day.
+    :return: sorted list of files found
+    """
+    file_list = set()
+
+    for name, is_dir in file_scan(root_path):
+        if not is_dir:
+            deb(f'\n[{name}]')
+            _dir = os.path.dirname(name)
+            if include_dir_hit(_dir, include_dirs) or include_file_hit(name, include_files):
+                if not exclude_dir_hit(_dir, exclude_dirs) and not exclude_file_hit(name, exclude_files):
+                    deb(f'-> adding file "{name}"')
+                    file_list.add(name)
+
+    return sorted(file_list)

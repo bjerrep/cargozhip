@@ -10,17 +10,19 @@ Cargozhip tries to fit in where just compressing a folder, or specific subfolder
 
 ```
 ./cargozhip.py -h
-usage: cargozhip [-h] [--root ROOT] --section SECTION [--config CONFIG] [--archive ARCHIVE]
+usage: cargozhip [-h] [--root ROOT] --section SECTION [--config CONFIG] [--archive ARCHIVE] [--dryrun] [--quiet] [--verbose]
 
 The slow, configurable and buggy as a complex number asset compressor.
 
 optional arguments:
   -h, --help         show this help message and exit
   --root ROOT        the root folder to work in, default current directory.
-  --section SECTION  the package configuration section to use
+  --section SECTION  the package configuration section name to use
   --config CONFIG    the package configuration to load. Default "root"/cargozhip.json
-  --archive ARCHIVE  archive name without extension. Default the project root directory name
-
+  --archive ARCHIVE  archive name without extension. Default name is the project root directory name and default location is current directory
+  --dryrun           don't actually make an archive
+  --quiet            no logging, default is informational logging
+  --verbose          verbose logging
 ```
 
 
@@ -30,15 +32,11 @@ optional arguments:
 By using the native python compression modules the supported formats are:
 
 - zip
-
 - bz2
-
 - lzma
-
 - tar.gz
-
 - tar.bz2
-
+- tar.xz
 
 
 ## Config 
@@ -47,36 +45,35 @@ A config file is a json file intended to reside in each asset cargozhip should w
 
 As advertised it contains separate entries for files and directories to include and/or exclude for the given asset. The full feature set can be seen in **testlib/cargozhip.json**.
 
-Files and directories can be specified in two flavors, either default as "unix filename pattern matching" as used by the python fnmatch module or if starting with a "!", as a regex.
+Files and directories can be specified in two flavors, either default as "unix filename pattern matching" as used by the python [wcmatch](https://github.com/facelessuser/wcmatch/) module or if starting with a "!", as a regex.
 
 Expect the outcome of a lot of intertwined including and excluding to be at least unpredictable. Either make more explicit rules or, well, fix the code.
 
 
 
-## Compressing the demo 'testlib' asset.
+## Compressing the demo asset.
 
 ```
-./cargozhip.py --section dev --root testlib/
-Packaging project testlib/
-Destination archive: /home/dizzy/src/cargozhip/testlib.lzma
-Parsing package list for section "dev"
-  Include files: ['*.h', '*.a', '*CMakeLists.txt', '!(?i)license\\.txt', 'version.txt', 'cargozhip.json']
-  Exclude files: ['**/secret_key.h']
-  Include dirs: ['art']
-  Exclude dirs: ['test']
-Scanning ...
-Matched 5 files
-  CMakeLists.txt
-  LICENSE.txt
-  cargozhip.json
-  inc/testlib.h
-  lib/libtest.a
-Matched 1 directories
-  art
-Scanned 15 files and 7 directories in 0.001 secs
-Compressing 5 files and 1 directories ...
-Generated archive testlib.lzma in 0.020 secs (1056 bytes)
-
+./cargozhip.py --section dev --root demo --info
+INF Loading configuration file demo/cargozhip.json
+INF Packaging project "demo" section "dev"
+INF Destination archive: /home/user/src/cargozhip/demo.lzma
+INF Parsing package list for section "dev"
+INF   Include files: ['**/*.h', '**/*.a', '*CMakeLists.txt', '!(?i)license\\.txt', 'version.txt', 'cargozhip.json']
+INF   Exclude files: ['**/secret_key.h']
+INF   Include dirs: ['art']
+INF   Exclude dirs: ['test']
+INF Scanning ...
+INF Matched 6 files
+INF   CMakeLists.txt
+INF   LICENSE.txt
+INF   art/pop.song
+INF   cargozhip.json
+INF   inc/testlib.h
+INF   lib/libtest.a
+INF Scanned 17 files and 8 directories in 0.004 secs
+INF Compressing 6 files ...
+INF Generated archive demo.lzma in 0.026 secs (1012 bytes)
 ```
 
 
@@ -84,20 +81,17 @@ Generated archive testlib.lzma in 0.020 secs (1056 bytes)
 Using the zipinfo utility to check what we got. Note that the content is stripped of references to the original root folder:
 
 ```
-zipinfo testlib.lzma
-Archive:  testlib.lzma
-Zip file size: 1056 bytes, number of entries: 7
--rw-r--r--  6.3 unx        0 b- lzma 21-Mar-31 00:22 lib/libtest.a
--rw-r--r--  6.3 unx      615 b- lzma 21-Apr-05 01:47 cargozhip.json
--rw-r--r--  6.3 unx        0 b- lzma 21-Mar-31 00:21 inc/testlib.h
+zipinfo demo.lzma
+Archive:  demo.lzma
+Zip file size: 1012 bytes, number of entries: 6
 -rw-r--r--  6.3 unx        0 b- lzma 21-Apr-01 14:30 CMakeLists.txt
 -rw-r--r--  6.3 unx        0 b- lzma 21-Apr-05 01:48 LICENSE.txt
-drwxr-xr-x  2.0 unx        0 b- stor 21-Apr-01 16:23 art/
 -rw-r--r--  6.3 unx        0 b- lzma 21-Apr-01 16:23 art/pop.song
-7 files, 615 bytes uncompressed, 340 bytes compressed:  44.7%
-
+-rw-r--r--  6.3 unx      747 b- lzma 21-Apr-29 22:50 cargozhip.json
+-rw-r--r--  6.3 unx        0 b- lzma 21-Mar-31 00:21 inc/testlib.h
+-rw-r--r--  6.3 unx        0 b- lzma 21-Mar-31 00:22 lib/libtest.a
+6 files, 747 bytes uncompressed, 380 bytes compressed:  49.1%
 ```
-
 
 
 ## Native python
@@ -105,7 +99,7 @@ drwxr-xr-x  2.0 unx        0 b- stor 21-Apr-01 16:23 art/
 The work is done by the method compress in the cz_api.py. This is what is used by the cargozhip.py executable script which is just a thin command line argument parser. 
 
 ```
-def compress(root, config, section, archive):
+def compress(root, config_file, section, archive):
 ```
 
 

@@ -1,0 +1,108 @@
+{
+    "config": {
+        "compression": "lzma"
+    },
+    "test_0": {
+        "include_files": [],
+        "exclude_files": ["**/data*"],
+        "include_dirs": ["folder_1", "folder_1/folder_1_1"],
+        "exclude_dirs": ["folder_1/**"],
+        "title": "",
+        "expected": [
+            "folder_1/file_1"
+        ]
+    },
+
+    "test_1": {
+        "include_files": ["**/file*"],
+        "exclude_files": [],
+        "include_dirs": [],
+        "exclude_dirs": [],
+        "title": "All files starting with 'file'",
+        "expected":[
+            "file",
+            "folder_1/file_1",
+            "folder_1/folder_1_1/file_1_1_1",
+            "folder_1/folder_1_1/folder_1_1_1/file_1_1_1_1",
+            "folder_1/folder_1_2/file_1_2_1",
+            "folder_1/folder_1_3/file_1_3_1",
+            "folder_2/file_2"
+        ]
+    },
+
+    "test_2": {
+        "include_files": [],
+        "exclude_files": [],
+        "include_dirs": ["folder_1/*"],
+        "exclude_dirs": [],
+        "title": "all files in all subfolders",
+        "expected":[
+            "folder_1/folder_1_1/data_1_1_1",
+            "folder_1/folder_1_1/file_1_1_1",
+            "folder_1/folder_1_2/file_1_2_1",
+            "folder_1/folder_1_3/file_1_3_1"
+        ]
+    },
+
+    "test_3": {
+        "include_files": ["folder_1/*"],
+        "exclude_files": [],
+        "include_dirs": [],
+        "exclude_dirs": [],
+        "title": "all files in subfolder",
+        "expected":[
+            "folder_1/data_1",
+            "folder_1/file_1"
+        ]
+    },
+
+    "test_3b": {
+        "include_files": ["folder_1/*", "folder_1/folder_1_1/*"],
+        "exclude_files": ["**/folder_1_1/data*"],
+        "include_dirs": [],
+        "exclude_dirs": [],
+        "title": "all files in two subfolders, no data files from folder 2",
+        "expected":[
+            "folder_1/data_1",
+            "folder_1/file_1",
+            "folder_1/folder_1_1/file_1_1_1"]
+    },
+
+    "test_4": {
+        "include_files": ["folder_1/**"],
+        "exclude_files": [],
+        "include_dirs": [],
+        "exclude_dirs": [],
+        "title": "all files in subfolders recursively",
+        "expected":[
+            "folder_1/data_1",
+            "folder_1/file_1",
+            "folder_1/folder_1_1/data_1_1_1",
+            "folder_1/folder_1_1/file_1_1_1",
+            "folder_1/folder_1_1/folder_1_1_1/data_1_1_1_1",
+            "folder_1/folder_1_1/folder_1_1_1/file_1_1_1_1",
+            "folder_1/folder_1_2/file_1_2_1",
+            "folder_1/folder_1_3/file_1_3_1"
+        ]
+    },
+
+    "test_5": {
+        "include_files": ["**"],
+        "exclude_files": ["**/data*"],
+        "include_dirs": [],
+        "exclude_dirs": [],
+        "title": "all files in subfolders recursively excluding data files",
+        "expected":[
+            "cargozhip.json",
+            "file",
+            "folder_1/file_1",
+            "folder_1/folder_1_1/file_1_1_1",
+            "folder_1/folder_1_1/folder_1_1_1/file_1_1_1_1",
+            "folder_1/folder_1_2/file_1_2_1",
+            "folder_1/folder_1_3/file_1_3_1",
+            "folder_2/file_2"
+        ]
+    }
+
+
+}

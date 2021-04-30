@@ -1,7 +1,7 @@
 *lzma
 *bz2
 *zip
-livetest
+compresstest
 
 __pycache__
 
