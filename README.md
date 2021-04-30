@@ -27,6 +27,14 @@ optional arguments:
 
 
 
+## Dependencies
+
+Cargozhip uses [wcmatch](https://github.com/facelessuser/wcmatch/) rather than the native python fnmatch for filename and directory name matching. 
+
+It can be installed via pip.
+
+
+
 ## Compression formats
 
 By using the native python compression modules the supported formats are:
