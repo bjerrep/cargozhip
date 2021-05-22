@@ -64,6 +64,12 @@ def write_archive(root, file_list, archive, compress_method):
     """
     Compress the file list. This is insanely slow, all files are added individually.
     """
+    # Since the zip thing is done when located in the source root then figure out the
+    # relative path 'rel_archive' to where the archive should be written accordingly.
+    abs_root = os.path.abspath(root)
+    abs_archive = os.path.abspath(archive)
+    rel_archive = os.path.relpath(abs_archive, abs_root)
+
     archive_path = os.path.dirname(archive)
 
     if not os.path.exists(archive_path):
@@ -75,14 +81,19 @@ def write_archive(root, file_list, archive, compress_method):
 
     zip_compression = compress_method in (zipfile.ZIP_LZMA, zipfile.ZIP_BZIP2, zipfile.ZIP_DEFLATED)
 
+    pwd = os.getcwd()
+    os.chdir(root)
+
     if zip_compression:
-        with zipfile.ZipFile(archive, 'w', compress_method) as _zipfile:
+        with zipfile.ZipFile(rel_archive, 'w', compress_method) as _zipfile:
             for _file in file_list:
-                _zipfile.write(os.path.join(root, _file))
+                _zipfile.write(_file)
     else:
-        with tarfile.open(archive, compress_method) as _tarfile:
+        with tarfile.open(rel_archive, compress_method) as _tarfile:
             for _file in file_list:
-                _tarfile.add(os.path.join(root, _file))
+                _tarfile.add(_file)
+
+    os.chdir(pwd)
 
     return time.time() - now
 
