@@ -1,15 +1,25 @@
-import os, json, time, zipfile, tarfile, logging
+import os, json, time, zipfile, tarfile, logging, pathlib
 from log import inf, logger as log
 import cz
 
 
 def load_config(config_name):
     """
-    Load the configuration file and return it as an native dict
+    Load the configuration file and return it as a native dict
     """
     inf(f'Loading configuration file {config_name}')
     with open(config_name) as f:
         return json.loads(f.read())
+
+
+def minimal_config():
+    config = {
+        'config':
+            {'compression': 'lzma'},
+        'default':
+            {'include_files': ['**']}
+    }
+    return config
 
 
 def scan(root, config, section):
@@ -54,40 +64,49 @@ def write_archive(root, file_list, archive, compress_method):
     """
     Compress the file list. This is insanely slow, all files are added individually.
     """
-    inf(f'Compressing {len(file_list)} files ...')
+    archive_path = os.path.dirname(archive)
+
+    if not os.path.exists(archive_path):
+        inf(f'Constructing the path {archive_path}')
+        pathlib.Path(archive_path).mkdir(parents=True)
+
+    inf(f'Compressing {len(file_list)} files to {archive}')
     now = time.time()
-    os.chdir(root)
 
     zip_compression = compress_method in (zipfile.ZIP_LZMA, zipfile.ZIP_BZIP2, zipfile.ZIP_DEFLATED)
 
     if zip_compression:
         with zipfile.ZipFile(archive, 'w', compress_method) as _zipfile:
             for _file in file_list:
-                _zipfile.write(_file)
+                _zipfile.write(os.path.join(root, _file))
     else:
         with tarfile.open(archive, compress_method) as _tarfile:
             for _file in file_list:
-                _tarfile.add(_file)
+                _tarfile.add(os.path.join(root, _file))
 
     return time.time() - now
 
 
-def compress(root, config_file, section, archive, dry_run=False):
+def compress(root, config_or_file, section, archive, dry_run=False):
     """
     The all in one cargozhip operation.
-    Reads the config file given, scans for files and then writes the archive.
+    Scans for files according to a configuration file or dictionary and then writes the archive.
+
+    'config_or_file' can be either a filename to a json configuration file or it can be a
+    dictionary with the configuration directly.
     """
 
     inf(f'Packaging project "{root}" section "{section}"')
 
-    config = load_config(config_file)
+    try:
+        config = load_config(config_or_file)
+    except:
+        config = config_or_file
 
     settings_config = config['config']
 
     if not archive:
         archive = os.path.join(os.getcwd(), root)
-    else:
-        archive = archive
 
     compression = settings_config['compression']
     if compression == 'lzma':
@@ -123,5 +142,5 @@ def compress(root, config_file, section, archive, dry_run=False):
     else:
         elapsed = write_archive(root, file_list, archive, compress_method)
 
-        inf(f'Generated archive {os.path.basename(archive)} '
+        inf(f'Generated archive {archive} '
             f'in {elapsed:0.3f} secs ({os.path.getsize(archive)} bytes)')

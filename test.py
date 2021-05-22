@@ -26,7 +26,20 @@ def module_test():
                 inf('')
 
 
-#
+def run_minimal_example():
+    inf('')
+    inf(' --------- run_minimal_example() ----------')
+    inf('')
+
+    config = cz_api.minimal_config()
+    archive = 'compresstest/minimal_example'
+    cz_api.compress('test', config, 'default', archive)
+
+    archive += '.lzma'
+    if not os.path.exists(archive):
+        raise Exception('run_minimal_example failed')
+
+
 # Compressor tests :
 # For now its a success if trying out the different compressors dont't crash.
 # Whatever is present under the project root is compressed (e.g. including .git/)
@@ -66,6 +79,7 @@ def run_compressor_tests():
 
 
 try:
+    run_minimal_example()
     run_compressor_tests()
     module_test()
 
