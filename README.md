@@ -102,6 +102,7 @@ Zip file size: 1012 bytes, number of entries: 6
 ```
 
 
+
 ## Native python
 
 The work is done by the method compress in the cz_api.py. This is what is used by the cargozhip.py executable script which is just a thin command line argument parser. 
@@ -112,11 +113,15 @@ def compress(root, config_or_file, section, archive, dry_run=False):
 
 
 
-As a practical example then compressing a directory could look like the following (keeping in mind that Cargozhip is really not the right tool for doing that):
+As a practical example then compressing a directory could look like the following (keeping in mind that this is exactly the usecase where Cargozhip makes very little sense):
 
 ```
 import cz_api
 config = cz_api.minimal_config()
 cz_api.compress('test', config, 'default', 'myarchive')
 ```
+
+
+
+The cz_api also have a decompress method which is straightforward and a copy method which runs in cargozhip style except it doesn't make an archive but just copies files to a destination directory as they are matched.
 

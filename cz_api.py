@@ -1,4 +1,4 @@
-import os, json, time, zipfile, tarfile, logging, pathlib
+import os, json, time, zipfile, tarfile, logging, pathlib, shutil
 from log import inf, logger as log
 import cz
 
@@ -155,3 +155,39 @@ def compress(root, config_or_file, section, archive, dry_run=False):
 
         inf(f'Generated archive {archive} '
             f'in {elapsed:0.3f} secs ({os.path.getsize(archive)} bytes)')
+
+
+def decompress(archive, destpath):
+    """
+    Not really part of the core business, but its an odd thing to miss support
+    for unpacking an archive right after having packed one.
+    """
+    extension = os.path.splitext(archive)[1]
+    if extension in ('.lzma', '.bz2', '.zip'):
+        with zipfile.ZipFile(archive, 'r') as _zipfile:
+            _zipfile.extractall(destpath)
+    elif extension in ('.tar.gz', '.tar.bz2', '.xz'):
+        with tarfile.ZipFile(archive, 'r') as _tarfile:
+            _tarfile.extractall(destpath)
+    else:
+        raise Exception(f'Don\'t understand the compression {extension} ?')
+
+
+def copy(root, config, section, dest_root):
+    """
+    Also not part of the core business, but why not directly support a copy operation
+    using a cargozhip configuration file. The result hopefully matches the result
+    of a compress() followed by a decompress().
+    """
+    config_dict = load_config(config)
+    file_list = scan(root, config_dict, section)
+
+    for _file in file_list:
+        src_file = os.path.join(root, _file)
+        dst_file = os.path.join(dest_root, _file)
+        try:
+            shutil.copy(src_file, dst_file)
+        except FileNotFoundError:
+            inf(f'Constructing destination path {dst_file}')
+            pathlib.Path(dst_file).mkdir(parents=True, exist_ok=True)
+            shutil.copy(src_file, dst_file)
