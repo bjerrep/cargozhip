@@ -173,14 +173,18 @@ def decompress(archive, destpath):
         raise Exception(f'Don\'t understand the compression {extension} ?')
 
 
-def copy(root, config, section, dest_root):
+def copy(root, config_or_file, section, dest_root):
     """
-    Also not part of the core business, but why not directly support a copy operation
-    using a cargozhip configuration file. The result hopefully matches the result
-    of a compress() followed by a decompress().
+    Also not part of the core business, but support a copy operation using
+    a cargozhip configuration file (or a configuration dictionary).
+    The result hopefully matches the result of a compress() followed by a decompress().
     """
-    config_dict = load_config(config)
-    file_list = scan(root, config_dict, section)
+    try:
+        config = load_config(config_or_file)
+    except:
+        config = config_or_file
+
+    file_list = scan(root, config, section)
 
     for _file in file_list:
         src_file = os.path.join(root, _file)
@@ -188,6 +192,7 @@ def copy(root, config, section, dest_root):
         try:
             shutil.copy(src_file, dst_file)
         except FileNotFoundError:
-            inf(f'Constructing destination path {dst_file}')
-            pathlib.Path(dst_file).mkdir(parents=True, exist_ok=True)
+            dst_file_path = os.path.dirname(dst_file)
+            inf(f'Constructing destination path {dst_file_path}')
+            pathlib.Path(dst_file_path).mkdir(parents=True, exist_ok=True)
             shutil.copy(src_file, dst_file)

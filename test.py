@@ -78,10 +78,16 @@ def run_compressor_tests():
     print('\nNote that compresstest directory isn\'t deleted automatically')
 
 
+def run_copy_without_archiving():
+    config = cz_api.minimal_config()
+    cz_api.copy('test', config, 'default', 'compresstest/copy_test')
+
+
 try:
     run_minimal_example()
     run_compressor_tests()
     module_test()
+    run_copy_without_archiving()
 
     print('\n---------------')
     print(' Test pass')
