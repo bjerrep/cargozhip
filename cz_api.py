@@ -72,7 +72,7 @@ def write_archive(root, file_list, archive, compress_method):
 
     archive_path = os.path.dirname(archive)
 
-    if not os.path.exists(archive_path):
+    if archive_path and not os.path.exists(archive_path):
         inf(f'Constructing the path {archive_path}')
         pathlib.Path(archive_path).mkdir(parents=True)
 
@@ -147,6 +147,9 @@ def compress(root, config_or_file, section, archive, dry_run=False):
 
     if not file_list:
         raise Exception('Found no files ?')
+
+    if archive in file_list:
+        raise Exception(f'Can\'t append archive {archive} to itself (fix the rules or delete the archive first)')
 
     if dry_run:
         inf('Dry run, not writing archive')

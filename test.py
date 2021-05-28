@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import cz_api, log
 from log import inf, err
-import json, os, pathlib
+import json, os, pathlib, shutil
 
 
 def module_test():
@@ -40,6 +40,42 @@ def run_minimal_example():
         raise Exception('run_minimal_example failed')
 
 
+def run_failing_examples():
+    inf('')
+    inf(' --------- run_failing_examples() ----------')
+    inf('')
+
+    # make a fresh subfolder to make the tests in
+    failing_path = 'compresstest/failing'
+    shutil.rmtree(failing_path)
+    pathlib.Path(failing_path).mkdir()
+    os.chdir(failing_path)
+
+    config = cz_api.minimal_config()
+
+    try:
+        archive = 'failing_since_there_are_no_files'
+        cz_api.compress('.', config, 'default', archive)
+        raise Exception(archive)
+    except:
+        pass
+
+    open('testfile', 'a').close()
+    archive = 'recursive_archive'
+
+    # this is okay, the new archive will be written in the source root
+    cz_api.compress('.', config, 'default', archive)
+
+    # this is not okay, the new archive would include an existing version of itself
+    try:
+        cz_api.compress('.', config, 'default', archive)
+        raise Exception(archive)
+    except:
+        pass
+
+    os.chdir('../..')
+
+
 # Compressor tests :
 # For now its a success if trying out the different compressors dont't crash.
 # Whatever is present under the project root is compressed (e.g. including .git/)
@@ -75,7 +111,6 @@ def run_compressor_tests():
     compressor_test('tar.gz')
     compressor_test('tar.bz2')
     compressor_test('tar.xz')
-    print('\nNote that compresstest directory isn\'t deleted automatically')
 
 
 def run_copy_without_archiving():
@@ -85,9 +120,12 @@ def run_copy_without_archiving():
 
 try:
     run_minimal_example()
+    run_failing_examples()
     run_compressor_tests()
     module_test()
     run_copy_without_archiving()
+
+    print('\nNote that compresstest directory isn\'t deleted automatically')
 
     print('\n---------------')
     print(' Test pass')
