@@ -59,10 +59,54 @@ Expect the outcome of a lot of intertwined including and excluding to be at leas
 
 
 
+## Cheat sheet
+
+A consequence of the current file matching is that it can be slightly baffling to get the include and exclude patterns to work as intended. Rather than risk to add to the confusion by "improving" the current matching some typical tasks and a way to do them are listed here:
+
+```
+root
+	file
+	subdir1
+		file1
+		subdir2
+			file2	
+```
+
+Include all files in a given directory:
+
+```
+include_dirs:	["**/subdir1"]
+Finds:			file1
+```
+
+Include everything in all sub directories recursively below a given directory (ignoring files in subdir1 itself):
+
+```
+include_dirs:	["**/subdir1/**"]
+Finds:			subdir2, file2
+```
+
+Include everything below a given directory with a regex:
+
+```
+include_files:	["!/subdir1/"]
+Finds: 			file1, subdir2, file2
+```
+
+Exclude a specific filename:
+
+```
+include_files:	["!/subdir1/"]
+exclude_files:	["!file1"]         (or wnmatch "**/file1")
+Finds: 			subdir2, file2
+```
+
+
+
 ## Compressing the demo asset.
 
 ```
-./cargozhip.py --section dev --root demo --info
+./cargozhip.py --section dev --root demo
 INF Loading configuration file demo/cargozhip.json
 INF Packaging project "demo" section "dev"
 INF Destination archive: /home/user/src/cargozhip/demo.lzma
