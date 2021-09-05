@@ -5,7 +5,8 @@ from wcmatch import glob as wcg
 
 
 default_config = 'cargozhip.json'
-
+RED = '\033[1;31m'
+LIGHT_BLUE = '\033[1;34m'
 
 def parse_section(config, section, include_files=None, include_dirs=None, exclude_files=None, exclude_dirs=None):
     """
@@ -17,7 +18,11 @@ def parse_section(config, section, include_files=None, include_dirs=None, exclud
         exclude_files = []
         exclude_dirs = []
 
-    _section = config[section]
+    try:
+        _section = config[section]
+    except KeyError:
+        raise Exception(f'Section "{section}" not found')
+
     try:
         include_files += _section['include_files']
     except:
@@ -36,8 +41,9 @@ def parse_section(config, section, include_files=None, include_dirs=None, exclud
         pass
 
     try:
-        for include in _section['inherit']:
-            parse_section(config, include, include_files, include_dirs, exclude_files, exclude_dirs)
+        inherit = _section['inherit']
+        deb(f'adding inherited "{inherit}"')
+        parse_section(config, inherit, include_files, include_dirs, exclude_files, exclude_dirs)
     except:
         pass
     return include_files, include_dirs, exclude_files, exclude_dirs
@@ -53,7 +59,7 @@ def file_scan(directory):
         root = os.path.relpath(root, directory)
         if root == '.':
             root = ''
-        deb(f'\nscan: cwd:"{root}" dirs:"{dirs}" files:"{files}"')
+        deb(f'scan: cwd:"{root}" dirs:"{dirs}" files:"{files}"')
 
         dirs_processed += len(dirs)
         for _dir in dirs:
@@ -72,7 +78,7 @@ def get_processed():
 def exclude_file_hit(name, exclude_files):
     for exclude_file in exclude_files:
         if exclude_file[0] == '!':
-            if re.search(name, exclude_file[1:]):
+            if re.search(exclude_file[1:], name):
                 deb(f'exclude file "{name}" match with regex "{exclude_file}"')
                 return True
         elif wcg.globmatch(name, exclude_file, flags=wcg.GLOBSTAR):
@@ -86,7 +92,7 @@ def exclude_file_hit(name, exclude_files):
 def exclude_dir_hit(name, exclude_dirs):
     for exclude_dir in exclude_dirs:
         if exclude_dir[0] == '!':
-            if re.search(name, exclude_dir[1:]):
+            if re.search(exclude_dir[1:], name):
                 deb(f'exclude dir  "{name}" match with regex "{exclude_dir}"')
                 return True
         elif wcg.globmatch(name, exclude_dir, flags=wcg.GLOBSTAR):
@@ -95,7 +101,7 @@ def exclude_dir_hit(name, exclude_dirs):
         else:
             dir = os.path.dirname(name)
             if exclude_dir[0] == '!':
-                if re.search(dir, exclude_dir[1:]):
+                if re.search(exclude_dir[1:], dir):
                     deb(f'exclude dir  "{name}" match with regex "{exclude_dir}"')
                     return True
             elif wcg.globmatch(dir, exclude_dir, flags=wcg.GLOBSTAR):
@@ -145,11 +151,11 @@ def find_files(root_path, include_files, include_dirs, exclude_files, exclude_di
 
     for name, is_dir in file_scan(root_path):
         if not is_dir:
-            deb(f'\n[{name}]')
+            deb(f'{LIGHT_BLUE}Checking "{name}"')
             _dir = os.path.dirname(name)
             if include_dir_hit(_dir, include_dirs) or include_file_hit(name, include_files):
                 if not exclude_dir_hit(_dir, exclude_dirs) and not exclude_file_hit(name, exclude_files):
-                    deb(f'-> adding file "{name}"')
+                    deb(f'{RED}Adding file "{name}"')
                     file_list.add(name)
 
     return sorted(file_list)

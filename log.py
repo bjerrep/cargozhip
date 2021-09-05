@@ -1,7 +1,7 @@
 # This is a minimal logging module without external dependencies as if that was a quality
 # in itself. Otherwise check out 'coloredlogs' which is the real thing.
 #
-import logging, sys
+import logging, sys, os
 
 indent = ''
 
@@ -37,7 +37,6 @@ if True:
     YELLOW = '\033[0;33m'
     RED = '\033[1;31m'
     LIGHT_BLUE = '\033[1;34m'
-
     REDINVERSE = '\033[1;37;41m'
 
     logging.addLevelName(logging.DEBUG, f'{WHITE}{logging.getLevelName(logging.DEBUG):.3}')
@@ -77,6 +76,7 @@ def err(msg):
     logger.error(f'{indent}{msg}')
 
 
-def cri(msg, exit_code):
+def cri(msg):
     logger.critical(f'{indent}{msg}')
-    exit(exit_code.value)
+    raise Exception(msg)
+    os._exit(1)

@@ -36,17 +36,23 @@ try:
 
     if not os.path.exists(args.root):
         cri(f'Root folder {args.root} not found, "{os.path.join(os.getcwd(), args.root)}"')
-    if args.root == '.':
-        root = os.path.basename(os.getcwd())
+
+    if args.root == '.' or not args.root:
+        root = os.getcwd()
     else:
-        root = os.path.basename(os.path.normpath(args.root))
+        root = os.path.abspath(args.root)
 
     if not args.config:
         config_file = os.path.join(root, cz.default_config)
     else:
-        config_file = args.config
+        config_file = os.path.abspath(args.config)
 
-    cz_api.compress(args.root, config_file, args.section, args.archive, args.dryrun)
+    if not args.archive:
+        archive = os.path.normpath(os.path.join(os.getcwd(), root))
+    else:
+        archive = args.archive
+
+    cz_api.compress(root, config_file, args.section, archive, args.dryrun)
 
 except Exception as e:
     err(f'{e.__repr__()}')

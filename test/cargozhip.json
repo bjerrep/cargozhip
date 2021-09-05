@@ -2,11 +2,20 @@
     "config": {
         "compression": "lzma"
     },
-    "test_0": {
+
+    "inherit_example_test_0_base": {
+        "include_dirs": ["folder_1", "folder_1/folder_1_1"]
+    },
+    
+    "inherit_example_test_0_direct": {
+        "inherit": "inherit_example_test_0_base",
         "include_files": [],
+        "exclude_dirs": ["folder_1/**"]
+    },
+    
+    "test_0": {
+        "inherit": "inherit_example_test_0_direct",
         "exclude_files": ["**/data*"],
-        "include_dirs": ["folder_1", "folder_1/folder_1_1"],
-        "exclude_dirs": ["folder_1/**"],
         "title": "",
         "expected": [
             "folder_1/file_1"

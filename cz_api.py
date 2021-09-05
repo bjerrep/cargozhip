@@ -1,5 +1,5 @@
 import os, json, time, zipfile, tarfile, logging, pathlib, shutil
-from log import inf, logger as log
+from log import inf, cri, logger as log
 import cz
 
 
@@ -7,9 +7,11 @@ def load_config(config_name):
     """
     Load the configuration file and return it as a native dict
     """
-    inf(f'Loading configuration file {config_name}')
-    with open(config_name) as f:
-        return json.loads(f.read())
+    try:
+        with open(config_name) as f:
+            return json.loads(f.read())
+    except Exception as e:
+        cri(f'{str(e)}')
 
 
 def minimal_config():
@@ -107,11 +109,12 @@ def compress(root, config_or_file, section, archive, dry_run=False):
     dictionary with the configuration directly.
     """
 
-    inf(f'Packaging project "{root}" section "{section}"')
+    inf(f'Packaging root "{root}"')
 
-    try:
+    if type(config_or_file) is str:
         config = load_config(config_or_file)
-    except:
+        inf(f'Loading configuration file "{config_or_file}" section "{section}"')
+    else:
         config = config_or_file
 
     settings_config = config['config']
@@ -182,9 +185,11 @@ def copy(root, config_or_file, section, dest_root):
     a cargozhip configuration file (or a configuration dictionary).
     The result hopefully matches the result of a compress() followed by a decompress().
     """
-    try:
+
+    if type(config_or_file) is str:
         config = load_config(config_or_file)
-    except:
+        inf(f'Loading configuration file "{config_or_file}" section "{section}"')
+    else:
         config = config_or_file
 
     file_list = scan(root, config, section)
