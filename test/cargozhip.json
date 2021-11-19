@@ -8,13 +8,13 @@
     },
     
     "inherit_example_test_0_direct": {
-        "inherit": "inherit_example_test_0_base",
+        "inherit": ["inherit_example_test_0_base"],
         "include_files": [],
         "exclude_dirs": ["folder_1/**"]
     },
     
     "test_0": {
-        "inherit": "inherit_example_test_0_direct",
+        "inherit": ["inherit_example_test_0_direct"],
         "exclude_files": ["**/data*"],
         "title": "",
         "expected": [
@@ -111,7 +111,11 @@
             "folder_1/folder_1_3/file_1_3_1",
             "folder_2/file_2"
         ]
-    }
+    },
 
+    "exception_1_recursive_inherit": {
+        "inherit": ["exception_1_recursive_inherit"],
+        "title": "inherit recursion failure"
+    }
 
 }

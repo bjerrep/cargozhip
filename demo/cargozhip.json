@@ -6,9 +6,12 @@
         "include_files": ["!(?i)license\\.txt", "version.txt", "cargozhip.json"],
         "exclude_files": ["**/secret_key.h"]
     },
+    "build": {
+        "include_files": ["*CMakeLists.txt"]
+    },
     "dev": {
-        "inherit": ["basics"],
-        "include_files": ["**/*.h", "**/*.a", "*CMakeLists.txt"],
+        "inherit": ["basics", "build"],
+        "include_files": ["**/*.h", "**/*.a"],
         "include_dirs": ["art"],
         "exclude_dirs": ["test"]
     },

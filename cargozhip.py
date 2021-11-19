@@ -15,7 +15,7 @@ parser.add_argument('--section', required=True,
 parser.add_argument('--config',
                     help=f'the package configuration to load. Default "root"/{cz.default_config}')
 parser.add_argument('--archive',
-                    help='archive name without extension. Default name is the project root directory name '\
+                    help='archive name without extension. Default name is the project root directory name '
                          'and default location is current directory')
 parser.add_argument('--dryrun', action='store_true',
                     help='don\'t actually make the archive')

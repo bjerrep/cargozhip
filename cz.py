@@ -7,16 +7,25 @@ from wcmatch import glob as wcg
 default_config = 'cargozhip.json'
 RED = '\033[1;31m'
 LIGHT_BLUE = '\033[1;34m'
+depth = 0
+
 
 def parse_section(config, section, include_files=None, include_dirs=None, exclude_files=None, exclude_dirs=None):
     """
     Load the specified section and recursively load upstream sections if found listed in 'inherit'.
     """
-    if not include_files and not include_dirs and not exclude_files and not exclude_dirs:
+    global depth
+    if include_files is None and include_dirs is None and exclude_files is None and exclude_dirs is None:
         include_files = []
         include_dirs = []
         exclude_files = []
         exclude_dirs = []
+        depth = 0
+
+    # try to catch circular recursions before Python does.
+    depth += 1
+    if depth > 10:
+        raise Exception("Too many recursions")
 
     try:
         _section = config[section]
@@ -41,11 +50,13 @@ def parse_section(config, section, include_files=None, include_dirs=None, exclud
         pass
 
     try:
-        inherit = _section['inherit']
-        deb(f'adding inherited "{inherit}"')
-        parse_section(config, inherit, include_files, include_dirs, exclude_files, exclude_dirs)
-    except:
+        inherit_list = _section['inherit']
+        for inherit in inherit_list:
+            deb(f'adding inherited "{inherit}"')
+            parse_section(config, inherit, include_files, include_dirs, exclude_files, exclude_dirs)
+    except KeyError:
         pass
+    depth -= 1
     return include_files, include_dirs, exclude_files, exclude_dirs
 
 

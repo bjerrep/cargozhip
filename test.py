@@ -26,6 +26,22 @@ def module_test():
                 inf('')
 
 
+def module_test_failures():
+    """
+    For now just verify that an exception is thrown
+    """
+    config_name = 'test/cargozhip.json'
+    config = cz_api.load_config(config_name)
+    for section in config.keys():
+        if section.startswith('exception_'):
+            inf(f'Title: {log.LIGHT_BLUE}{config[section]["title"]}{log.RESET}')
+            try:
+                _ = cz_api.scan('test', config, section)
+                raise Exception("Failed, no exception was raised")
+            except Exception as e:
+                inf(f'Got expected {e.__repr__()}')
+
+
 def run_minimal_example():
     inf('')
     inf(' --------- run_minimal_example() ----------')
@@ -123,6 +139,7 @@ try:
     run_failing_examples()
     run_compressor_tests()
     module_test()
+    module_test_failures()
     run_copy_without_archiving()
 
     print('\nNote that compresstest directory isn\'t deleted automatically')
