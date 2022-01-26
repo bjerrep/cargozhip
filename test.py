@@ -56,6 +56,21 @@ def run_minimal_example():
         raise Exception('run_minimal_example failed')
 
 
+def run_minimal_example_a_section_with_only_a_depends():
+    inf('')
+    inf(' --------- run_minimal_example_a_section_with_only_a_depends() ----------')
+    inf('')
+
+    config = cz_api.minimal_config()
+    config['only_depends'] = {'inherit': ['default']}
+    archive = 'compresstest/run_minimal_example_a_section_with_only_a_depends'
+    cz_api.compress('test', config, 'only_depends', archive)
+
+    archive += '.lzma'
+    if not os.path.exists(archive):
+        raise Exception('run_minimal_example_a_section_with_only_a_depends')
+
+
 def run_failing_examples():
     inf('')
     inf(' --------- run_failing_examples() ----------')
@@ -136,6 +151,7 @@ def run_copy_without_archiving():
 
 try:
     run_minimal_example()
+    run_minimal_example_a_section_with_only_a_depends()
     run_failing_examples()
     run_compressor_tests()
     module_test()

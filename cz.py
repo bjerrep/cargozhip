@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from log import deb
+from log import deb, inf
 import os, re
 from wcmatch import glob as wcg
 
@@ -79,7 +79,12 @@ def file_scan(directory):
         files_processed += len(files)
         for filename in files:
             fqn = os.path.join(root, filename)
-            yield fqn, False
+            ffqn = os.path.join(directory, fqn)
+            if os.path.exists(ffqn):
+                yield fqn, False
+            else:
+                inf(f'ignoring "{fqn}" (broken symlink?)')
+                continue
 
 
 def get_processed():
