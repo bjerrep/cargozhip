@@ -14,15 +14,21 @@ usage: cargozhip [-h] [--root ROOT] --section SECTION [--config CONFIG] [--archi
 
 The slow, configurable and buggy as a complex number asset compressor.
 
-optional arguments:
-  -h, --help         show this help message and exit
-  --root ROOT        the root folder to work in, default current directory.
-  --section SECTION  the package configuration section name to use
-  --config CONFIG    the package configuration to load. Default "root"/cargozhip.json
-  --archive ARCHIVE  archive name without extension. Default name is the project root directory name and default location is current directory
-  --dryrun           don't actually make an archive
-  --quiet            no logging, default is informational logging
-  --verbose          verbose logging
+options:
+  -h, --help            show this help message and exit
+  --root ROOT           the root folder to work in, default current directory.
+  --section SECTION     the package configuration section name to use
+  --config CONFIG       the package configuration to load. Default
+  						"root"/cargozhip.json
+  --archive ARCHIVE     archive name without extension. Default name is the project 						root directory name and default location is
+                        current directory
+  --dryrun              don't actually make the archive
+  --compression COMPRESSION
+                        overrule compressor listed in configuration
+                        [lzma|bz2|zip|tar.gz|tar.bz2|tar.xz]
+  --quiet               no logging, default is informational logging
+  --verbose             verbose logging
+
 ```
 
 
@@ -45,6 +51,10 @@ By using the native python compression modules the supported formats are:
 - tar.gz
 - tar.bz2
 - tar.xz
+
+There are (supposed to be) support for symlinks for the zip, bz2 and lzma compressions.
+
+
 
 
 ## Config 

@@ -35,7 +35,8 @@
             "folder_1/folder_1_1/folder_1_1_1/file_1_1_1_1",
             "folder_1/folder_1_2/file_1_2_1",
             "folder_1/folder_1_3/file_1_3_1",
-            "folder_2/file_2"
+            "folder_2/file_2",
+            "symlinks/file"
         ]
     },
 
@@ -99,7 +100,7 @@
         "include_files": ["**"],
         "exclude_files": ["**/data*"],
         "include_dirs": [],
-        "exclude_dirs": [],
+        "exclude_dirs": ["symlinks"],
         "title": "all files in subfolders recursively excluding data files",
         "expected":[
             "cargozhip.json",
@@ -116,6 +117,28 @@
     "exception_1_recursive_inherit": {
         "inherit": ["exception_1_recursive_inherit"],
         "title": "inherit recursion failure"
+    },
+
+    "test_symlinks_6A": {
+        "include_files": ["symlinks/**"],
+        "title": "symlinks A",
+        "expected":[
+            "symlinks/file",
+            "symlinks/libedip.so",
+            "symlinks/libedip.so.1",
+            "symlinks/libedip.so.1.0.0"
+        ]
+    },
+    
+    "test_symlinks_6B": {
+        "include_files": ["!libedip", "!symlinks/file"],
+        "title": "symlinks B",
+        "expected":[
+            "symlinks/file",
+            "symlinks/libedip.so",
+            "symlinks/libedip.so.1",
+            "symlinks/libedip.so.1.0.0"
+        ]
     }
 
 }

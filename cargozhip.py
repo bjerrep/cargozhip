@@ -19,6 +19,8 @@ parser.add_argument('--archive',
                          'and default location is current directory')
 parser.add_argument('--dryrun', action='store_true',
                     help='don\'t actually make the archive')
+parser.add_argument('--compression',
+                    help='overrule compressor listed in configuration [lzma|bz2|zip|tar.gz|tar.bz2|tar.xz]')
 parser.add_argument('--quiet', action='store_true',
                     help='no logging, default is informational logging')
 parser.add_argument('--verbose', action='store_true',
@@ -52,7 +54,7 @@ try:
     else:
         archive = args.archive
 
-    cz_api.compress(root, config_file, args.section, archive, args.dryrun)
+    cz_api.compress(root, config_file, args.section, archive, args.dryrun, args.compression)
 
 except Exception as e:
     err(f'{e.__repr__()}')

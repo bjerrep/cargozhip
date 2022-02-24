@@ -89,7 +89,22 @@ def write_archive(root, file_list, archive, compress_method):
     if zip_compression:
         with zipfile.ZipFile(rel_archive, 'w', compress_method) as _zipfile:
             for _file in file_list:
-                _zipfile.write(_file)
+                if os.path.islink(_file):
+                    # First go at supporting symlinks
+                    zipInfo = zipfile.ZipInfo(_file)
+                    zipInfo.create_system = 3  # unix
+                    zipInfo.external_attr = os.lstat(_file).st_mode << 16
+
+                    # Attempt to support relative symlinks within the given root.
+                    # Outgoing symlinks haven't even been tried
+                    fqn = os.path.dirname(os.path.abspath(_file))
+                    link = os.path.dirname(os.readlink(_file))
+                    relative_path = os.path.relpath(link, fqn)
+                    fn = os.path.join(relative_path, os.path.basename(os.readlink(_file)))
+
+                    _zipfile.writestr(zipInfo, fn)
+                else:
+                    _zipfile.write(_file)
     else:
         with tarfile.open(rel_archive, compress_method) as _tarfile:
             for _file in file_list:
@@ -100,7 +115,7 @@ def write_archive(root, file_list, archive, compress_method):
     return time.time() - now
 
 
-def compress(root, config_or_file, section, archive, dry_run=False):
+def compress(root, config_or_file, section, archive, dry_run=False, compression=None):
     """
     The all in one cargozhip operation.
     Scans for files according to a configuration file or dictionary and then writes the archive.
@@ -122,23 +137,27 @@ def compress(root, config_or_file, section, archive, dry_run=False):
     if not archive:
         archive = os.path.join(os.getcwd(), root)
 
-    compression = settings_config['compression']
-    if compression == 'lzma':
+    if compression:
+        _compression = compression
+    else:
+        _compression = settings_config['compression']
+
+    if _compression == 'lzma':
         compress_method = zipfile.ZIP_LZMA
         archive = archive + '.lzma'
-    elif compression == 'bz2':
+    elif _compression == 'bz2':
         compress_method = zipfile.ZIP_BZIP2
         archive = archive + '.bz2'
-    elif compression == 'zip':
+    elif _compression == 'zip':
         compress_method = zipfile.ZIP_DEFLATED
         archive = archive + '.zip'
-    elif compression == 'tar.gz':
+    elif _compression == 'tar.gz':
         compress_method = 'w:gz'
         archive = archive + '.tar.gz'
-    elif compression == 'tar.bz2':
+    elif _compression == 'tar.bz2':
         compress_method = 'w:bz2'
         archive = archive + '.tar.bz2'
-    elif compression == 'tar.xz':
+    elif _compression == 'tar.xz':
         compress_method = 'w:xz'
         archive = archive + '.tar.xz'
     else:
