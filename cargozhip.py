@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser('cargozhip', description='''
     ''')
 parser.add_argument('--root', default='.',
                     help='the root folder to work in, default current directory.')
-parser.add_argument('--section', required=True,
+parser.add_argument('--section',
                     help='the package configuration section name to use')
 parser.add_argument('--config',
                     help=f'the package configuration to load. Default "root"/{cz.default_config}')
@@ -21,6 +21,8 @@ parser.add_argument('--dryrun', action='store_true',
                     help='don\'t actually make the archive')
 parser.add_argument('--compression',
                     help='overrule compressor listed in configuration [lzma|bz2|zip|tar.gz|tar.bz2|tar.xz]')
+parser.add_argument('--decompress', action='store_true',
+                    help='decompress the archive in the given root')
 parser.add_argument('--quiet', action='store_true',
                     help='no logging, default is informational logging')
 parser.add_argument('--verbose', action='store_true',
@@ -54,10 +56,13 @@ try:
     else:
         archive = args.archive
 
-    cz_api.compress(root, config_file, args.section, archive, args.dryrun, args.compression)
+    if args.decompress:
+        cz_api.decompress(archive, root)
+    else:
+        cz_api.compress(root, config_file, args.section, archive, args.dryrun, args.compression)
 
 except Exception as e:
-    err(f'{e.__repr__()}')
+    err(f'{e.__str__()}')
     exit(1)
 
 exit(0)

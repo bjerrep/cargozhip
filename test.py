@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-import cz_api, log
-from log import inf, err
 import json, os, pathlib, shutil
+import cz_api, log
+from log import inf, err, die
 
 
 def module_test():
@@ -14,7 +14,7 @@ def module_test():
     config = cz_api.load_config(config_name)
     for section in config.keys():
         if section.startswith('test_'):
-            inf(f'Title: {log.LIGHT_BLUE}{config[section]["title"]}{log.RESET}')
+            inf(f'Title: {section}: {log.LIGHT_BLUE}{config[section]["title"]}{log.RESET}')
             file_list = cz_api.scan('test', config, section)
             if config[section]['expected'] != file_list:
                 err('Test failed, this was the scan result:')
@@ -78,7 +78,7 @@ def run_failing_examples():
 
     # make a fresh subfolder to make the tests in
     failing_path = 'compresstest/failing'
-    shutil.rmtree(failing_path)
+    shutil.rmtree(failing_path, ignore_errors=True)
     pathlib.Path(failing_path).mkdir()
     os.chdir(failing_path)
 
@@ -131,7 +131,9 @@ def compressor_test(compression):
     config_file['config']['compression'] = compression
     with open('compresstest/test.json', 'w') as f:
         f.write(json.dumps(config_file))
-    os.system('./cargozhip.py --root . --section test --config compresstest/test.json --archive compresstest/test')
+    ret = os.system('./cargozhip.py --root . --section test --config compresstest/test.json --archive compresstest/test')
+    if ret:
+        die('cargozhip.py failed')
 
 
 def run_compressor_tests():
@@ -145,7 +147,11 @@ def run_compressor_tests():
 
 
 def run_copy_without_archiving():
+    inf('')
+    inf(' --------- run_copy_without_archiving ----------')
+    inf('')
     config = cz_api.minimal_config()
+    shutil.rmtree('compresstest/copy_test', ignore_errors=True)
     cz_api.copy('test', config, 'default', 'compresstest/copy_test')
 
 
@@ -167,6 +173,6 @@ try:
 
 except Exception as e:
     print('\n---------------')
-    print(f' Test fail, {e.__repr__()}')
+    print(f' Test fail, {e.__str__()}')
     print('---------------\n')
     exit(1)

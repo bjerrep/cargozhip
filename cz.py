@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-from log import deb, inf
 import os, re
 from wcmatch import glob as wcg
+from log import deb, inf
 
 
 default_config = 'cargozhip.json'
@@ -115,12 +115,12 @@ def exclude_dir_hit(name, exclude_dirs):
             deb(f'exclude dir  "{name}" match with "{exclude_dir}"')
             return True
         else:
-            dir = os.path.dirname(name)
+            directory = os.path.dirname(name)
             if exclude_dir[0] == '!':
-                if re.search(exclude_dir[1:], dir):
+                if re.search(exclude_dir[1:], directory):
                     deb(f'exclude dir  "{name}" match with regex "{exclude_dir}"')
                     return True
-            elif wcg.globmatch(dir, exclude_dir, flags=wcg.GLOBSTAR):
+            elif wcg.globmatch(directory, exclude_dir, flags=wcg.GLOBSTAR):
                 deb(f'exclude dir  "{name}" match with "{exclude_dir}"')
                 return True
             else:
@@ -161,12 +161,15 @@ def find_files(root_path, include_files, include_dirs, exclude_files, exclude_di
     The include_... and exclude_... functions above and this function were made before starting
     using the wcmatch library. It should be possible to replace it all with wcmatch but that
     will be another day.
-    :return: sorted list of files found
+    :return: sorted list of files and symlinks found. Normally directories are ignored but as a
+             special case also include directories that are in fact symlinks.
     """
     file_list = set()
 
     for name, is_dir in file_scan(root_path):
-        if not is_dir:
+        fqn = os.path.join(root_path, name)
+        symlink = os.path.islink(fqn)
+        if not is_dir or symlink:
             deb(f'{LIGHT_BLUE}Checking "{name}"')
             _dir = os.path.dirname(name)
             if include_dir_hit(_dir, include_dirs) or include_file_hit(name, include_files):

@@ -1,5 +1,5 @@
 import os, json, time, zipfile, tarfile, logging, pathlib, shutil
-from log import inf, cri, logger as log
+from log import inf, war, err, cri, logger as log
 import cz
 
 
@@ -93,16 +93,16 @@ def write_archive(root, file_list, archive, compress_method):
                     # First go at supporting symlinks
                     zipInfo = zipfile.ZipInfo(_file)
                     zipInfo.create_system = 3  # unix
-                    zipInfo.external_attr = os.lstat(_file).st_mode << 16
+                    mode = os.lstat(_file).st_mode
+                    zipInfo.external_attr |= mode << 16
 
-                    # Attempt to support relative symlinks within the given root.
-                    # Outgoing symlinks haven't even been tried
-                    fqn = os.path.dirname(os.path.abspath(_file))
-                    link = os.path.dirname(os.readlink(_file))
-                    relative_path = os.path.relpath(link, fqn)
-                    fn = os.path.join(relative_path, os.path.basename(os.readlink(_file)))
+                    link = os.readlink(_file)
+                    if os.path.isabs(link):
+                        if not link.startswith(root):
+                            war(f'symlink {_file} -> {link} has reference outside root, ignored')
+                            continue
 
-                    _zipfile.writestr(zipInfo, fn)
+                    _zipfile.writestr(zipInfo, link)
                 else:
                     _zipfile.write(_file)
     else:
@@ -126,7 +126,7 @@ def compress(root, config_or_file, section, archive, dry_run=False, compression=
 
     inf(f'Packaging root "{root}"')
 
-    if type(config_or_file) is str:
+    if isinstance(config_or_file, str):
         config = load_config(config_or_file)
         inf(f'Loading configuration file "{config_or_file}" section "{section}"')
     else:
@@ -191,6 +191,20 @@ def decompress(archive, destpath):
     if extension in ('.lzma', '.bz2', '.zip'):
         with zipfile.ZipFile(archive, 'r') as _zipfile:
             _zipfile.extractall(destpath)
+
+            # zipfile as of current doesn't support symlinks so manually rewrite those
+            for element in _zipfile.namelist():
+                zipinfo = _zipfile.getinfo(element)
+                if zipinfo.external_attr & 0x20000000:
+                    symlink = os.path.join(destpath, element)
+                    with open(symlink) as f:
+                        symlink_dest = f.read()
+                    try:
+                        os.remove(symlink)
+                    except:
+                        os.rmdir(symlink)
+                    os.symlink(symlink_dest, symlink)
+
     elif extension in ('.tar.gz', '.tar.bz2', '.xz'):
         with tarfile.ZipFile(archive, 'r') as _tarfile:
             _tarfile.extractall(destpath)
@@ -205,7 +219,7 @@ def copy(root, config_or_file, section, dest_root):
     The result hopefully matches the result of a compress() followed by a decompress().
     """
 
-    if type(config_or_file) is str:
+    if isinstance(config_or_file, str):
         config = load_config(config_or_file)
         inf(f'Loading configuration file "{config_or_file}" section "{section}"')
     else:
@@ -213,13 +227,32 @@ def copy(root, config_or_file, section, dest_root):
 
     file_list = scan(root, config, section)
 
+    symlinks = []
+
     for _file in file_list:
         src_file = os.path.join(root, _file)
         dst_file = os.path.join(dest_root, _file)
+
+        if not os.path.islink(src_file):
+            try:
+                shutil.copy(src_file, dst_file)
+            except FileNotFoundError:
+                dst_file_path = os.path.dirname(dst_file)
+                inf(f'Constructing destination path {dst_file_path}')
+                pathlib.Path(dst_file_path).mkdir(parents=True, exist_ok=True)
+                shutil.copy(src_file, dst_file)
+        else:
+            # if it is a symlink (to a file or directory) then just save the link for
+            # now in case the destination does not yet exist.
+            abs_src_file = os.path.abspath(src_file)
+            abs_link_target = os.path.realpath(src_file)
+            link = os.path.relpath(abs_link_target, abs_src_file)[3:]
+            is_dir = not os.path.isfile(src_file)
+            symlinks.append((link, dst_file, is_dir))
+
+    # all files and directories in scope are now made, then make the symlinks
+    for link, dst, is_dir in symlinks:
         try:
-            shutil.copy(src_file, dst_file)
-        except FileNotFoundError:
-            dst_file_path = os.path.dirname(dst_file)
-            inf(f'Constructing destination path {dst_file_path}')
-            pathlib.Path(dst_file_path).mkdir(parents=True, exist_ok=True)
-            shutil.copy(src_file, dst_file)
+            os.symlink(src=link, dst=dst, target_is_directory=is_dir)
+        except:
+            err(f'failed making symlink {link} to {dst}')

@@ -79,4 +79,8 @@ def err(msg):
 def cri(msg):
     logger.critical(f'{indent}{msg}')
     raise Exception(msg)
+
+
+def die(msg):
+    logger.critical(f'{indent}{msg}')
     os._exit(1)

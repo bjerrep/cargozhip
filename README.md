@@ -52,7 +52,13 @@ By using the native python compression modules the supported formats are:
 - tar.bz2
 - tar.xz
 
-There are (supposed to be) support for symlinks for the zip, bz2 and lzma compressions.
+
+
+### Symlinks
+
+Support for symlinks to both files and folders is implemented for the zip style compressions zip, bz2 and lzma, and seems to work for at least the plain zip compression. Currently symlinks pointing outside the given root are simply skipped.
+
+Be aware that some archivers fails to make proper symlinks when decompressing, at least when given the zip file made by Cargozhip. Using *unzip* on the commandline or Cargozhip native decompression and copy (see further down) should produce valid symlinks.
 
 
 

@@ -6,13 +6,13 @@
     "inherit_example_test_0_base": {
         "include_dirs": ["folder_1", "folder_1/folder_1_1"]
     },
-    
+
     "inherit_example_test_0_direct": {
         "inherit": ["inherit_example_test_0_base"],
         "include_files": [],
         "exclude_dirs": ["folder_1/**"]
     },
-    
+
     "test_0": {
         "inherit": ["inherit_example_test_0_direct"],
         "exclude_files": ["**/data*"],
@@ -124,12 +124,14 @@
         "title": "symlinks A",
         "expected":[
             "symlinks/file",
+            "symlinks/folder_2",
             "symlinks/libedip.so",
             "symlinks/libedip.so.1",
+            "symlinks/libedip.so.1.0",
             "symlinks/libedip.so.1.0.0"
         ]
     },
-    
+
     "test_symlinks_6B": {
         "include_files": ["!libedip", "!symlinks/file"],
         "title": "symlinks B",
@@ -137,6 +139,7 @@
             "symlinks/file",
             "symlinks/libedip.so",
             "symlinks/libedip.so.1",
+            "symlinks/libedip.so.1.0",
             "symlinks/libedip.so.1.0.0"
         ]
     }
