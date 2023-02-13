@@ -14,6 +14,20 @@ def load_config(config_name):
         cri(f'{str(e)}')
 
 
+def get_config_sections(config_name):
+    """
+    Return all sections as a list regardless of how they might be inherited or not.
+    """
+    configuration = load_config(config_name)
+    sections = list(configuration.keys())
+    try:
+        # the config entry is actually the configuration setup used by cargozhip so get rid of that.
+        sections.remove('config')
+    except:
+        pass
+    return sections
+
+
 def minimal_config():
     config = {
         'config':
@@ -221,6 +235,7 @@ def copy(root, config_or_file, section, dest_root):
 
     if isinstance(config_or_file, str):
         config = load_config(config_or_file)
+        get_config_sections(config_or_file)
         inf(f'Loading configuration file "{config_or_file}" section "{section}"')
     else:
         config = config_or_file
