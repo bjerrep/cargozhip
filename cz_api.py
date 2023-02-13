@@ -256,3 +256,5 @@ def copy(root, config_or_file, section, dest_root):
             os.symlink(src=link, dst=dst, target_is_directory=is_dir)
         except:
             err(f'failed making symlink {link} to {dst}')
+
+    inf(f'copy complete, written to {dest_root}')

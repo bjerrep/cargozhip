@@ -23,6 +23,9 @@ parser.add_argument('--compression',
                     help='overrule compressor listed in configuration [lzma|bz2|zip|tar.gz|tar.bz2|tar.xz]')
 parser.add_argument('--decompress', action='store_true',
                     help='decompress the archive in the given root')
+parser.add_argument('--copyroot',
+                    help='implies that only the copy part is executed with files copied to copyroot and left there. '
+                         'The actual compression part is skipped.')
 parser.add_argument('--quiet', action='store_true',
                     help='no logging, default is informational logging')
 parser.add_argument('--verbose', action='store_true',
@@ -58,6 +61,8 @@ try:
 
     if args.decompress:
         cz_api.decompress(archive, root)
+    elif args.copyroot:
+        cz_api.copy(root, config_file, args.section, args.copyroot)
     else:
         cz_api.compress(root, config_file, args.section, archive, args.dryrun, args.compression)
 
