@@ -10,7 +10,8 @@ Cargozhip tries to fit in where just compressing a folder, or specific subfolder
 
 ```
 ./cargozhip.py -h
-usage: cargozhip [-h] [--root ROOT] --section SECTION [--config CONFIG] [--archive ARCHIVE] [--dryrun] [--quiet] [--verbose]
+usage: cargozhip [-h] [--root ROOT] [--section SECTION] [--config CONFIG] [--archive ARCHIVE] [--dryrun] [--compression COMPRESSION][--decompress] [--copyroot COPYROOT] 
+[--quiet] [--verbose]
 
 The slow, configurable and buggy as a complex number asset compressor.
 
@@ -18,16 +19,20 @@ options:
   -h, --help            show this help message and exit
   --root ROOT           the root folder to work in, default current directory.
   --section SECTION     the package configuration section name to use
-  --config CONFIG       the package configuration to load. Default
-  						"root"/cargozhip.json
-  --archive ARCHIVE     archive name without extension. Default name is the project 						root directory name and default location is
-                        current directory
+  --config CONFIG       the package configuration to load. Default "root"/cargozhip.json
+  --archive ARCHIVE     archive name without extension. Default name is the project 
+  						root directory name and default location is current directory
   --dryrun              don't actually make the archive
   --compression COMPRESSION
-                        overrule compressor listed in configuration
-                        [lzma|bz2|zip|tar.gz|tar.bz2|tar.xz]
+                        overrule compressor listed in configuration [lzma| bz2| zip|
+                        tar.gz|tar.bz2|tar.xz]
+  --decompress          decompress the archive in the given root
+  --copyroot COPYROOT   implies that only the copy part is executed with files copied
+                        to copyroot and left there. The actual compression part is
+                        skipped.
   --quiet               no logging, default is informational logging
   --verbose             verbose logging
+
 
 ```
 
@@ -72,6 +77,29 @@ As advertised it contains separate entries for files and directories to include 
 Files and directories can be specified in two flavors, either default as "unix filename pattern matching" as used by the python [wcmatch](https://github.com/facelessuser/wcmatch/) module or if starting with a "!", as a regex.
 
 Expect the outcome of a lot of intertwined including and excluding to be at least unpredictable. Either make more explicit rules or, well, fix the code.
+
+
+
+## Relocating
+
+Cargozhip can relocate, or move, files to a new location in the compressed archive. It could be documentation from all over the place that it would be nice to present to users of the archive as a single  ./doc directory or it could be binaries that should be in a single ./bin directory. The move destination for subsequent filters are defined by a leading @. 
+
+Example:
+
+```
+include_files:	["just/as/is", "@inc", "lib1/inc/foo.h", "lib2/inc/bar.h", "@bin", "build/program"]
+```
+
+Which will eventually unpack to something like
+
+```
+./just/as/is
+./inc/foo.h
+./inc/bar.h
+./bin/program
+```
+
+Relocating is newly added and even more likely to go into funny mode than the rest.
 
 
 
