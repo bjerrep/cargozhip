@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-import json, os, pathlib, shutil
-import cz_api, log
-from log import inf, err, die
+import json, os, pathlib, shutil, traceback, logging
+import cargozhip.cz_api as cz_api, cargozhip.log as log
+from cargozhip.log import inf, err, die, set_log_colors
 
 
 def module_test():
     """
+    Run the file scan only for the test cases starting with "test_".
     The configuration file for the module tests contains the additional entries
     'title' and 'expected' so the configuration will both contain the test cases
     and the expected outputs in one place.
@@ -14,11 +15,12 @@ def module_test():
     config = cz_api.load_config(config_name)
     for section in config.keys():
         if section.startswith('test_'):
+            inf('----------------------------------------------------------')
             inf(f'Title: {section}: {log.LIGHT_BLUE}{config[section]["title"]}{log.RESET}')
-            file_list = cz_api.scan('test', config, section)
-            if config[section]['expected'] != file_list:
+            scan_result = cz_api.scan('test', config, section)
+            if config[section]['expected'] != scan_result.as_file_list():
                 err('Test failed, this was the scan result:')
-                for file in file_list:
+                for file in scan_result.as_file_list():
                     print(f'            "{file}",')
                 raise Exception(f'module test {section}')
             else:
@@ -131,7 +133,7 @@ def compressor_test(compression):
     config_file['config']['compression'] = compression
     with open('compresstest/test.json', 'w') as f:
         f.write(json.dumps(config_file))
-    ret = os.system('./cargozhip.py --root . --section test --config compresstest/test.json --archive compresstest/test')
+    ret = os.system('./cargozhip.py --root test --section test --config compresstest/test.json --archive compresstest/test')
     if ret:
         die('cargozhip.py failed')
 
@@ -156,6 +158,9 @@ def run_copy_without_archiving():
 
 
 try:
+    log.set_log_colors()
+
+    module_test()
     run_minimal_example()
     run_minimal_example_a_section_with_only_a_depends()
     run_failing_examples()
@@ -172,6 +177,7 @@ try:
     exit(0)
 
 except Exception as e:
+    print(traceback.format_exc())
     print('\n---------------')
     print(f' Test fail, {e.__str__()}')
     print('---------------\n')

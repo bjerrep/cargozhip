@@ -1,7 +1,7 @@
 # This is a minimal logging module without external dependencies as if that was a quality
 # in itself. Otherwise check out 'coloredlogs' which is the real thing.
 #
-import logging, sys, os
+import logging, sys
 
 indent = ''
 
@@ -20,6 +20,14 @@ class Indent():
         return indent
 
 
+GREY = '\033[0;37m'
+WHITE = '\033[0;37m'
+WHITEBOLD = '\033[1;37m'
+GREEN = '\033[0;32m'
+YELLOW = '\033[0;33m'
+RED = '\033[1;31m'
+LIGHT_BLUE = '\033[1;34m'
+REDINVERSE = '\033[1;37;41m'
 RESET = '\033[0m'
 
 handler = logging.StreamHandler(sys.stdout)
@@ -29,27 +37,19 @@ logger = logging.getLogger()
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
-if True:
-    # enable coloring
-    GREY = '\033[0;37m'
-    WHITE = '\033[0;37m'
-    GREEN = '\033[0;32m'
-    YELLOW = '\033[0;33m'
-    RED = '\033[1;31m'
-    LIGHT_BLUE = '\033[1;34m'
-    REDINVERSE = '\033[1;37;41m'
-
-    logging.addLevelName(logging.DEBUG, f'{WHITE}{logging.getLevelName(logging.DEBUG):.3}')
-    logging.addLevelName(logging.INFO, f'{GREEN}{logging.getLevelName(logging.INFO):.3}')
-    logging.addLevelName(logging.WARNING, f'{YELLOW}{logging.getLevelName(logging.WARNING):.3}')
-    logging.addLevelName(logging.ERROR, f'{RED}{logging.getLevelName(logging.ERROR):.3}')
-    logging.addLevelName(logging.CRITICAL, f'{REDINVERSE}{logging.getLevelName(logging.CRITICAL):.3}')
-else:
-    logging.addLevelName(logging.DEBUG, f'{logging.getLevelName(logging.DEBUG):.3}')
-    logging.addLevelName(logging.INFO, f'{logging.getLevelName(logging.INFO):.3}')
-    logging.addLevelName(logging.WARNING, f'{logging.getLevelName(logging.WARNING):.3}')
-    logging.addLevelName(logging.ERROR, f'{logging.getLevelName(logging.ERROR):.3}')
-    logging.addLevelName(logging.CRITICAL, f'{logging.getLevelName(logging.CRITICAL):.3}')
+def set_log_colors():
+    if True:
+        logging.addLevelName(logging.DEBUG, f'{WHITE}{logging.getLevelName(logging.DEBUG):.3}')
+        logging.addLevelName(logging.INFO, f'{GREEN}{logging.getLevelName(logging.INFO):.3}')
+        logging.addLevelName(logging.WARNING, f'{YELLOW}{logging.getLevelName(logging.WARNING):.3}')
+        logging.addLevelName(logging.ERROR, f'{RED}{logging.getLevelName(logging.ERROR):.3}')
+        logging.addLevelName(logging.CRITICAL, f'{REDINVERSE}{logging.getLevelName(logging.CRITICAL):.3}')
+    else:
+        logging.addLevelName(logging.DEBUG, f'{logging.getLevelName(logging.DEBUG):.3}')
+        logging.addLevelName(logging.INFO, f'{logging.getLevelName(logging.INFO):.3}')
+        logging.addLevelName(logging.WARNING, f'{logging.getLevelName(logging.WARNING):.3}')
+        logging.addLevelName(logging.ERROR, f'{logging.getLevelName(logging.ERROR):.3}')
+        logging.addLevelName(logging.CRITICAL, f'{logging.getLevelName(logging.CRITICAL):.3}')
 
 
 def deb(msg, newline=True):
@@ -83,4 +83,4 @@ def cri(msg):
 
 def die(msg):
     logger.critical(f'{indent}{msg}')
-    os._exit(1)
+    raise msg

@@ -142,6 +142,31 @@
             "symlinks/libedip.so.1.0",
             "symlinks/libedip.so.1.0.0"
         ]
-    }
+    },
 
+    "test_copy_plain_files_with_dest": {
+        "include_files_1": ["@dest", "folder_1/*"],
+        "include_files_2": ["folder_2/*"],
+        "title": "plain files with new destination",
+        "expected": [
+            "folder_2/file_2",
+            "dest/data_1",
+            "dest/file_1"
+        ]
+    },
+
+    "test_copy_symlinks_with_dest": {
+        "include_files": ["file", "@lib", "symlinks/lib*", "@misc", "symlinks/file"],
+        "include_dirs": ["symlinks/folder_2", "folder_2"],
+        "title": "symlinks with new destination",
+        "expected": [
+            "file",
+            "folder_2/file_2",
+            "lib/libedip.so",
+            "lib/libedip.so.1",
+            "lib/libedip.so.1.0",
+            "lib/libedip.so.1.0.0",
+            "misc/file"
+        ]
+    }
 }

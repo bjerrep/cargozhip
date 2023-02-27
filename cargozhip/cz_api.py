@@ -1,6 +1,6 @@
 import os, json, time, zipfile, tarfile, logging, pathlib, shutil
-from log import inf, war, err, cri, logger as log
-import cz
+from cargozhip.log import inf, war, err, deb, logger as log
+from cargozhip import cz
 
 
 def load_config(config_name):
@@ -10,22 +10,13 @@ def load_config(config_name):
     try:
         with open(config_name) as f:
             return json.loads(f.read())
-    except Exception as e:
-        cri(f'{str(e)}')
+    except FileNotFoundError as e:
+        raise Exception(f'{str(e)}') from e
 
 
 def get_config_sections(config_name):
-    """
-    Return all sections as a list regardless of how they might be inherited or not.
-    """
-    configuration = load_config(config_name)
-    sections = list(configuration.keys())
-    try:
-        # the config entry is actually the configuration setup used by cargozhip so get rid of that.
-        sections.remove('config')
-    except:
-        pass
-    return sections
+    config = load_config(config_name)
+    cz.get_sections(config)
 
 
 def minimal_config():
@@ -43,40 +34,43 @@ def scan(root, config, section):
     Load the section from the configuration and return the file list matching files and
     directories to include and exclude.
     """
-    include_files, include_dirs, exclude_files, exclude_dirs = cz.parse_section(config, section)
+    filters = cz.parse_section(config, section)
 
     inf(f'Parsing package list for section "{section}"')
-    inf(f'  Include files: {include_files}')
-    inf(f'  Exclude files: {exclude_files}')
-    inf(f'  Include dirs: {include_dirs}')
-    inf(f'  Exclude dirs: {exclude_dirs}')
+    inf(f'  Include files: {filters.include_files}')
+    inf(f'  Include files dest: {filters.include_files_dest}')
+    inf(f'  Exclude files: {filters.exclude_files}')
+    inf(f'  Include dirs: {filters.include_dirs}')
+    inf(f'  Exclude dirs: {filters.exclude_dirs}')
 
     inf('Scanning ...')
     now = time.time()
-    file_list = cz.find_files(root, include_files, include_dirs, exclude_files, exclude_dirs)
+    scan_result = cz.find_files(root, filters)
 
-    inf(f'Matched {len(file_list)} files')
-    if log.level == logging.INFO:
-        max_debug_lines = 20
-        for fqn in sorted(file_list):
-            if max_debug_lines:
-                inf(f'  {fqn}')
-                max_debug_lines -= 1
-                if not max_debug_lines:
+    inf(f'Matched {scan_result.nof_files} files')
+
+    if log.level <= logging.INFO:
+        max_info_lines = 20
+        for src, dest in scan_result.as_source_and_dest():
+            if src != dest:
+                inf(f'  {src} -as- {dest}')
+            else:
+                inf(f'  {src}')
+            if log.level == logging.INFO:
+                max_info_lines -= 1
+                if not max_info_lines:
                     inf(' -- not listing additional files --')
-    elif log.level == logging.DEBUG:
-        for fqn in sorted(file_list):
-            inf(f'  {fqn}')
+                    break
 
     nof_files_processed, nof_dirs_processed = cz.get_processed()
 
     inf(f'Scanned {nof_files_processed} files and {nof_dirs_processed} '
         f'directories in {time.time()-now:0.3f} secs')
 
-    return file_list
+    return scan_result
 
 
-def write_archive(root, file_list, archive, compress_method):
+def write_archive(root, scan_result, archive, compress_method):
     """
     Compress the file list. This is insanely slow, all files are added individually.
     """
@@ -92,7 +86,8 @@ def write_archive(root, file_list, archive, compress_method):
         inf(f'Constructing the path {archive_path}')
         pathlib.Path(archive_path).mkdir(parents=True)
 
-    inf(f'Compressing {len(file_list)} files to {archive}')
+
+    inf(f'Compressing {scan_result.nof_files} files to {archive}')
     now = time.time()
 
     zip_compression = compress_method in (zipfile.ZIP_LZMA, zipfile.ZIP_BZIP2, zipfile.ZIP_DEFLATED)
@@ -102,27 +97,36 @@ def write_archive(root, file_list, archive, compress_method):
 
     if zip_compression:
         with zipfile.ZipFile(rel_archive, 'w', compress_method) as _zipfile:
-            for _file in file_list:
+            for _file, _dest in scan_result.as_source_and_dest():
                 if os.path.islink(_file):
                     # First go at supporting symlinks
-                    zipInfo = zipfile.ZipInfo(_file)
-                    zipInfo.create_system = 3  # unix
+                    zip_info = zipfile.ZipInfo(_dest)
+                    zip_info.create_system = 3  # unix
                     mode = os.lstat(_file).st_mode
-                    zipInfo.external_attr |= mode << 16
+                    zip_info.external_attr |= mode << 16
 
                     link = os.readlink(_file)
+
+                    deb(f'archive symlink "{_file}" pointing to "{link}" as "{_dest}" ')
+
+                    if link != '.':
+                        # For symlinks pointing out of the current directory check that the destination is present.
+                        # The occasional incorrect assumption is that the destination is always present for same directory symlinks.
+                        if not scan_result.target_file_exist(_dest):
+                            war(f'skipping symlink {_file} since {_dest} is not included')
+                            continue
                     if os.path.isabs(link):
                         if not link.startswith(root):
                             war(f'symlink {_file} -> {link} has reference outside root, ignored')
                             continue
 
-                    _zipfile.writestr(zipInfo, link)
+                    _zipfile.writestr(zip_info, link)
                 else:
-                    _zipfile.write(_file)
+                    _zipfile.write(_file, arcname=_dest)
     else:
         with tarfile.open(rel_archive, compress_method) as _tarfile:
-            for _file in file_list:
-                _tarfile.add(_file)
+            for _file, _dest in scan_result.as_source_and_dest():
+                _tarfile.add(_file, arcname=_dest)
 
     os.chdir(pwd)
 
@@ -179,18 +183,18 @@ def compress(root, config_or_file, section, archive, dry_run=False, compression=
 
     inf(f'Destination archive: {archive}')
 
-    file_list = scan(root, config, section)
+    scan_result = scan(root, config, section)
 
-    if not file_list:
+    if not scan_result.nof_files:
         raise Exception('Found no files ?')
 
-    if archive in file_list:
+    if archive in scan_result.as_file_list():
         raise Exception(f'Can\'t append archive {archive} to itself (fix the rules or delete the archive first)')
 
     if dry_run:
         inf('Dry run, not writing archive')
     else:
-        elapsed = write_archive(root, file_list, archive, compress_method)
+        elapsed = write_archive(root, scan_result, archive, compress_method)
 
         inf(f'Generated archive {archive} '
             f'in {elapsed:0.3f} secs ({os.path.getsize(archive)} bytes)')
@@ -240,13 +244,13 @@ def copy(root, config_or_file, section, dest_root):
     else:
         config = config_or_file
 
-    file_list = scan(root, config, section)
+    scan_result = scan(root, config, section)
 
     symlinks = []
 
-    for _file in file_list:
-        src_file = os.path.join(root, _file)
-        dst_file = os.path.join(dest_root, _file)
+    for _source, _dest in scan_result.as_source_and_dest():
+        src_file = os.path.join(root, _source)
+        dst_file = os.path.join(dest_root, _dest)
 
         if not os.path.islink(src_file):
             try:
@@ -265,10 +269,22 @@ def copy(root, config_or_file, section, dest_root):
             is_dir = not os.path.isfile(src_file)
             symlinks.append((link, dst_file, is_dir))
 
-    # all files and directories in scope are now made, then make the symlinks
+    # now make the symlinks
     for link, dst, is_dir in symlinks:
         try:
             os.symlink(src=link, dst=dst, target_is_directory=is_dir)
+        except FileExistsError:
+            err(f'got FileExists error making symlink {link} to {dst}')
+        except FileNotFoundError:
+            try:
+                # and the destination path is still missing in case this was also a move
+                dst_path = os.path.dirname(dst)
+                pathlib.Path(dst_path).mkdir(parents=True, exist_ok=True)
+                os.symlink(src=link, dst=dst, target_is_directory=is_dir)
+            except:
+                err(f'failed making symlink {link} to {dst} after making {dst_path}')
+        except NotADirectoryError:
+            err(f'failed making symlink {link} to {dst} (perhaps a name clash?)')
         except:
             err(f'failed making symlink {link} to {dst}')
 

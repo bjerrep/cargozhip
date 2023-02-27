@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-import argparse, logging, os
-import cz
-import cz_api
-from log import err, cri, logger as log
+import argparse, logging, os, traceback
+from cargozhip import cz
+from cargozhip import cz_api
+from cargozhip.log import err, cri, set_log_colors, logger as log
 
+set_log_colors()
 
 parser = argparse.ArgumentParser('cargozhip', description='''
     The slow, configurable and buggy as a complex number asset compressor.
@@ -68,6 +69,8 @@ try:
 
 except Exception as e:
     err(f'{e.__str__()}')
+    if args.verbose:
+        print(traceback.format_exc())
     exit(1)
 
 exit(0)
