@@ -1,6 +1,9 @@
-import os, json, time, zipfile, tarfile, logging, pathlib, shutil
+import os, json, time, zipfile, tarfile, logging, pathlib, shutil, warnings
 from cargozhip.log import inf, war, err, deb, logger as log
 from cargozhip import cz
+
+# force file collisions in zipfile to be fatal rather than a "UserWarning" log message
+warnings.filterwarnings("error")
 
 
 def load_config(config_name):
@@ -22,8 +25,8 @@ def get_config_sections(config_name):
 def minimal_config():
     config = {
         'config':
-            {'compression': 'lzma'},
-        'default':
+            {'compression': 'zip'},
+        'everything':
             {'include_files': ['**']}
     }
     return config
@@ -37,8 +40,7 @@ def scan(root, config, section):
     filters = cz.parse_section(config, section)
 
     inf(f'Parsing package list for section "{section}"')
-    inf(f'  Include files: {filters.include_files}')
-    inf(f'  Include files dest: {filters.include_files_dest}')
+    inf(f'  Include files dest: {filters.include_files}')
     inf(f'  Exclude files: {filters.exclude_files}')
     inf(f'  Include dirs: {filters.include_dirs}')
     inf(f'  Exclude dirs: {filters.exclude_dirs}')
@@ -65,7 +67,7 @@ def scan(root, config, section):
     nof_files_processed, nof_dirs_processed = cz.get_processed()
 
     inf(f'Scanned {nof_files_processed} files and {nof_dirs_processed} '
-        f'directories in {time.time()-now:0.3f} secs')
+        f'directories in {time.time() - now:0.3f} secs')
 
     return scan_result
 
@@ -85,7 +87,6 @@ def write_archive(root, scan_result, archive, compress_method):
     if archive_path and not os.path.exists(archive_path):
         inf(f'Constructing the path {archive_path}')
         pathlib.Path(archive_path).mkdir(parents=True)
-
 
     inf(f'Compressing {scan_result.nof_files} files to {archive}')
     now = time.time()
@@ -119,10 +120,15 @@ def write_archive(root, scan_result, archive, compress_method):
                         if not link.startswith(root):
                             war(f'symlink {_file} -> {link} has reference outside root, ignored')
                             continue
-
-                    _zipfile.writestr(zip_info, link)
+                    try:
+                        _zipfile.writestr(zip_info, link)
+                    except UserWarning:
+                        raise Exception(f'Name collision in zip archive when writing symlink {_file} as {_dest}')
                 else:
-                    _zipfile.write(_file, arcname=_dest)
+                    try:
+                        _zipfile.write(_file, arcname=_dest)
+                    except UserWarning:
+                        raise Exception(f'Name collision in zip archive when writing file {_file} as {_dest}')
     else:
         with tarfile.open(rel_archive, compress_method) as _tarfile:
             for _file, _dest in scan_result.as_source_and_dest():
@@ -188,7 +194,7 @@ def compress(root, config_or_file, section, archive, dry_run=False, compression=
     if not scan_result.nof_files:
         raise Exception('Found no files ?')
 
-    if archive in scan_result.as_file_list():
+    if archive in scan_result.all_destinations():
         raise Exception(f'Can\'t append archive {archive} to itself (fix the rules or delete the archive first)')
 
     if dry_run:
@@ -200,42 +206,62 @@ def compress(root, config_or_file, section, archive, dry_run=False, compression=
             f'in {elapsed:0.3f} secs ({os.path.getsize(archive)} bytes)')
 
 
-def decompress(archive, destpath):
+def decompress(archive, destpath, force=False):
     """
     Not really part of the core business, but its an odd thing to miss support
     for unpacking an archive right after having packed one.
     """
-    extension = os.path.splitext(archive)[1]
-    if extension in ('.lzma', '.bz2', '.zip'):
-        with zipfile.ZipFile(archive, 'r') as _zipfile:
-            _zipfile.extractall(destpath)
+    try:
+        os.makedirs(destpath, exist_ok=force)
+    except:
+        err(f'destination {destpath} already exist ?')
 
-            # zipfile as of current doesn't support symlinks so manually rewrite those
-            for element in _zipfile.namelist():
-                zipinfo = _zipfile.getinfo(element)
-                if zipinfo.external_attr & 0x20000000:
-                    symlink = os.path.join(destpath, element)
+    extension = os.path.splitext(archive)[1]
+
+    if extension in ('.lzma', '.bz2', '.zip'):
+        with zipfile.ZipFile(archive, mode='r') as _zipfile:
+            for info in _zipfile.infolist():
+                if force:
+                    try:
+                        os.remove(os.path.join(destpath, info.filename))
+                    except:
+                        pass
+                is_symlink = bool(info.external_attr & 0x20000000)
+                deb(f'decompressing {info.filename}  {"symlink" if is_symlink else ""}')
+                _zipfile.extract(info.filename, path=destpath)
+
+                if is_symlink:
+                    symlink = os.path.join(destpath, info.filename)
                     with open(symlink) as f:
                         symlink_dest = f.read()
-                    try:
-                        os.remove(symlink)
-                    except:
-                        os.rmdir(symlink)
-                    os.symlink(symlink_dest, symlink)
+                        try:
+                            os.remove(symlink)
+                        except:
+                            os.rmdir(symlink)
+                        print(symlink_dest)
+                        os.symlink(symlink_dest, symlink)
 
     elif extension in ('.tar.gz', '.tar.bz2', '.xz'):
         with tarfile.ZipFile(archive, 'r') as _tarfile:
             _tarfile.extractall(destpath)
     else:
-        raise Exception(f'Don\'t understand the compression {extension} ?')
+        raise Exception(f'Cannot decompress from filename extension "{extension}" ?')
 
 
-def copy(root, config_or_file, section, dest_root):
+def copy(root, config_or_file, section, destination):
     """
-    Also not part of the core business, but support a copy operation using
-    a cargozhip configuration file (or a configuration dictionary).
+    Also not part of the core business, but support a copy operation using a cargozhip configuration
+    file (or a configuration dictionary).
+    This allows for a faster/different/otherwise better compression tool to be used rather than the
+    native python compressors in case cargozhip is still useful for just extracting files.
     The result hopefully matches the result of a compress() followed by a decompress().
     """
+    try:
+        # require the destination to be empty or non-existent
+        if os.listdir(os.path.abspath(destination)):
+            err(f'destination directory {destination} is not empty')
+    except FileNotFoundError:
+        pass
 
     if isinstance(config_or_file, str):
         config = load_config(config_or_file)
@@ -245,12 +271,20 @@ def copy(root, config_or_file, section, dest_root):
         config = config_or_file
 
     scan_result = scan(root, config, section)
-
-    symlinks = []
+    symlinked_paths = []
 
     for _source, _dest in scan_result.as_source_and_dest():
         src_file = os.path.join(root, _source)
-        dst_file = os.path.join(dest_root, _dest)
+        dst_file = os.path.join(destination, _dest)
+
+        duplicate = False
+        for sl_path in symlinked_paths:
+            if dst_file == sl_path:
+                duplicate = True
+                break
+
+        if duplicate:
+            continue
 
         if not os.path.islink(src_file):
             try:
@@ -261,31 +295,28 @@ def copy(root, config_or_file, section, dest_root):
                 pathlib.Path(dst_file_path).mkdir(parents=True, exist_ok=True)
                 shutil.copy(src_file, dst_file)
         else:
-            # if it is a symlink (to a file or directory) then just save the link for
-            # now in case the destination does not yet exist.
             abs_src_file = os.path.abspath(src_file)
             abs_link_target = os.path.realpath(src_file)
             link = os.path.relpath(abs_link_target, abs_src_file)[3:]
             is_dir = not os.path.isfile(src_file)
-            symlinks.append((link, dst_file, is_dir))
 
-    # now make the symlinks
-    for link, dst, is_dir in symlinks:
-        try:
-            os.symlink(src=link, dst=dst, target_is_directory=is_dir)
-        except FileExistsError:
-            err(f'got FileExists error making symlink {link} to {dst}')
-        except FileNotFoundError:
             try:
-                # and the destination path is still missing in case this was also a move
-                dst_path = os.path.dirname(dst)
-                pathlib.Path(dst_path).mkdir(parents=True, exist_ok=True)
-                os.symlink(src=link, dst=dst, target_is_directory=is_dir)
+                os.symlink(src=link, dst=dst_file, target_is_directory=is_dir)
+                symlinked_paths.append(dst_file)
+            except FileExistsError:
+                err(f'got FileExists error making symlink {link} to {dst_file}')
+            except FileNotFoundError:
+                try:
+                    # and the destination path is still missing in case this was also a move
+                    dst_path = os.path.dirname(dst_file)
+                    pathlib.Path(dst_path).mkdir(parents=True, exist_ok=True)
+                    os.symlink(src=link, dst=dst_file, target_is_directory=is_dir)
+                    symlinked_paths.append(dst_file)
+                except:
+                    err(f'failed making symlink {link} to {dst_file} after making {dst_path}')
+            except NotADirectoryError:
+                err(f'failed making symlink {link} to {dst_file} (perhaps a name clash?)')
             except:
-                err(f'failed making symlink {link} to {dst} after making {dst_path}')
-        except NotADirectoryError:
-            err(f'failed making symlink {link} to {dst} (perhaps a name clash?)')
-        except:
-            err(f'failed making symlink {link} to {dst}')
+                err(f'failed making symlink {link} to {dst_file}')
 
-    inf(f'copy complete, written to {dest_root}')
+    inf(f'copy complete to {destination}')

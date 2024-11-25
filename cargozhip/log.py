@@ -11,13 +11,11 @@ class Indent():
         global indent
         indent += '   '
 
-    def __del__(self):
+
+class Unindent():
+    def __init__(self):
         global indent
         indent = indent[:-3]
-
-    @staticmethod
-    def indent():
-        return indent
 
 
 GREY = '\033[0;37m'
@@ -37,6 +35,7 @@ logger = logging.getLogger()
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
+
 def set_log_colors():
     if True:
         logging.addLevelName(logging.DEBUG, f'{WHITE}{logging.getLevelName(logging.DEBUG):.3}')
@@ -55,7 +54,7 @@ def set_log_colors():
 def deb(msg, newline=True):
     if not newline:
         handler.terminator = ''
-    logger.debug(f'{indent}{msg}')
+    logger.debug('%s%s',indent, msg)
     if not newline:
         handler.terminator = '\n'
 
@@ -63,24 +62,14 @@ def deb(msg, newline=True):
 def inf(msg, newline=True):
     if not newline:
         handler.terminator = ''
-    logger.info(f'{indent}{msg}')
+    logger.info('%s%s',indent, msg)
     if not newline:
         handler.terminator = '\n'
 
 
 def war(msg):
-    logger.warning(f'{indent}{msg}')
+    logger.warning('%s%s%s%s', REDINVERSE, indent, msg, RESET)
 
 
 def err(msg):
-    logger.error(f'{indent}{msg}')
-
-
-def cri(msg):
-    logger.critical(f'{indent}{msg}')
     raise Exception(msg)
-
-
-def die(msg):
-    logger.critical(f'{indent}{msg}')
-    raise msg

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 import os, re
 from wcmatch import glob as wcg
-from cargozhip.log import deb, inf, Indent, WHITEBOLD, RED, LIGHT_BLUE, GREEN, RESET
-
+from cargozhip.log import deb, war, Indent, Unindent, WHITEBOLD, YELLOW, LIGHT_BLUE, GREEN, RESET
 
 default_config = 'cargozhip.json'
 depth = 0
@@ -11,19 +10,18 @@ depth = 0
 class Filters:
     def __init__(self):
         self.include_files = []
-        self.include_files_dest = []
         self.include_dirs = []
         self.exclude_files = []
         self.exclude_dirs = []
+
 
 class ScanResult:
     def __init__(self):
         self.nof_files = 0
         self.file_list = {}
 
-    def add(self, key, filename):
-        if key:
-            key = key[1:]
+    def add(self, hit):
+        key, filename = hit
         if not self.file_list.get(key):
             self.file_list[key] = []
         self.file_list[key].append(filename)
@@ -33,27 +31,31 @@ class ScanResult:
         for key in self.file_list.keys():
             self.file_list[key] = sorted(self.file_list[key])
 
-    def as_file_list(self):
+    def all_destinations(self):
         result = []
         for key, file_list in self.file_list.items():
             for filename in file_list:
                 if key:
-                    fn = os.path.join(key, os.path.basename(filename))
-                    result.append(fn)
+                    if key.startswith('@@'):
+                        fn = os.path.join(key[2:], filename)
+                        result.append(fn)
+                    else:
+                        fn = os.path.join(key[1:], os.path.basename(filename))
+                        result.append(fn)
                 else:
                     result.append(filename)
         return result
 
     def as_source_and_dest(self):
-        result = []
+        sourcefiles = []
         for file_list in self.file_list.values():
             for filename in file_list:
-                result.append(filename)
-        return zip(result, self.as_file_list())
+                sourcefiles.append(filename)
+        return zip(sourcefiles, self.all_destinations())
 
     def target_file_exist(self, target):
         target = os.path.normpath(target)
-        for src, dest in self.as_source_and_dest():
+        for _src, dest in self.as_source_and_dest():
             if target == dest:
                 return True
         return False
@@ -107,8 +109,9 @@ def parse_section(config, section, filters=None):
                     if entry.startswith("@"):
                         dest = entry
                         continue
-                    filters.include_files.append(entry)
-                    filters.include_files_dest.append(dest)
+
+                    filters.include_files.append((dest, entry))
+
             elif key.startswith('include_dirs'):
                 filters.include_dirs += filterentry
             elif key.startswith('exclude_files'):
@@ -135,7 +138,7 @@ dirs_processed = 0
 
 def file_scan(directory):
     global files_processed, dirs_processed
-    for root, dirs, files in os.walk(directory):
+    for root, dirs, files in os.walk(directory, followlinks=True):
         root = os.path.relpath(root, directory)
         if root == '.':
             root = ''
@@ -152,7 +155,7 @@ def file_scan(directory):
             if os.path.exists(ffqn):
                 yield fqn, False
             else:
-                inf(f'ignoring "{fqn}" (broken symlink?)')
+                war(f'ignoring "{fqn}" (broken symlink?)')
                 continue
 
 
@@ -160,7 +163,7 @@ def get_processed():
     return files_processed, dirs_processed
 
 
-def exclude_file_hit(name, exclude_files):
+def check_for_exclude_file(name, exclude_files):
     for exclude_file in exclude_files:
         if exclude_file[0] == '!':
             if re.search(exclude_file[1:], name):
@@ -174,14 +177,14 @@ def exclude_file_hit(name, exclude_files):
     return False
 
 
-def exclude_dir_hit(name, exclude_dirs):
+def check_for_exclude_dir(name, exclude_dirs):
     for exclude_dir in exclude_dirs:
         if exclude_dir[0] == '!':
             if re.search(exclude_dir[1:], name):
-                deb(f'exclude dir  "{name}" match with regex "{exclude_dir}"')
+                deb(f'exclude dir  "{name}" {GREEN}match{RESET} with regex "{exclude_dir}"')
                 return True
         elif wcg.globmatch(name, exclude_dir, flags=wcg.GLOBSTAR):
-            deb(f'exclude dir  "{name}" match with "{exclude_dir}"')
+            deb(f'exclude dir  "{name}" {GREEN}match{RESET} with "{exclude_dir}"')
             return True
         else:
             directory = os.path.dirname(name)
@@ -197,29 +200,29 @@ def exclude_dir_hit(name, exclude_dirs):
     return False
 
 
-def include_file_hit(name, include_files, include_files_dest):
-    for include_file, include_file_dest in zip(include_files, include_files_dest):
-        if include_file[0] == '!':
-            if re.search(include_file[1:], name):
-                deb(f'include file "{name}" {GREEN}match{RESET} with regex "{include_file}"')
-                return include_file_dest
-        elif wcg.globmatch(name, include_file, flags=wcg.GLOBSTAR):
-            deb(f'include file "{name}" {GREEN}match{RESET} with "{include_file}"')
-            return include_file_dest
+def check_for_include_file(name, include_files):
+    for dest, pattern in include_files:
+        if pattern[0] == '!':
+            if re.search(pattern[1:], name):
+                deb(f'include file "{name}" {GREEN}match{RESET} with regex "{pattern}"')
+                return (dest, name)
+        elif wcg.globmatch(name, pattern, flags=wcg.GLOBSTAR):
+            deb(f'include file "{name}" {GREEN}match{RESET} with "{pattern}"')
+            return (dest, name)
         else:
-            deb(f'include file "{name}" unmatched with "{include_file}"')
+            deb(f'include file "{name}" unmatched with "{pattern}"')
     return False
 
 
-def include_dir_hit(name, include_dirs):
+def check_for_include_dir(directory, name, include_dirs):
     for include_dir in include_dirs:
         if include_dir[0] == '!':
-            if re.search(include_dir[1:], name):
+            if re.search(include_dir[1:], directory):
                 deb(f'include dir  "{name}" {GREEN}match{RESET} with regex "{include_dir}"')
-                return True
-        elif wcg.globmatch(name, include_dir, flags=wcg.GLOBSTAR):
+                return (None, name)
+        elif wcg.globmatch(directory, include_dir, flags=wcg.GLOBSTAR):
             deb(f'include dir  "{name}" {GREEN}match{RESET} with "{include_dir}"')
-            return True
+            return (None, name)
         else:
             deb(f'include dir  "{name}" unmatched with "{include_dir}"')
     return False
@@ -236,20 +239,27 @@ def find_files(root_path, filters):
     scan_result = ScanResult()
 
     for name, is_dir in file_scan(root_path):
-        _ = Indent()
+        Indent()
         fqn = os.path.join(root_path, name)
         symlink = os.path.islink(fqn)
+
+        # directories are not explicitly checked, only implicitly based on actual files found
         if not is_dir or symlink:
             deb(f'{LIGHT_BLUE}Checking "{name}"')
+
+            Indent()
+            hit = check_for_include_file(name, filters.include_files)
             _dir = os.path.dirname(name)
-            inc_file_hit = include_file_hit(name, filters.include_files, filters.include_files_dest)
 
-            if include_dir_hit(_dir, filters.include_dirs) or inc_file_hit is not False:
-                if not exclude_dir_hit(_dir, filters.exclude_dirs) and not exclude_file_hit(name, filters.exclude_files):
-                    deb(f'{RED}Adding file "{name}"')
-                    scan_result.add(inc_file_hit, name)
+            if not hit:
+                hit = check_for_include_dir(_dir, name, filters.include_dirs)
 
-        del _
+            if hit:
+                if not check_for_exclude_dir(_dir, filters.exclude_dirs) and not check_for_exclude_file(name, filters.exclude_files):
+                    deb(f'{YELLOW}Adding file "{name}"')
+                    scan_result.add(hit)
+            Unindent()
+        Unindent()
 
     scan_result.sort()
 

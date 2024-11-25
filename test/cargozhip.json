@@ -1,6 +1,6 @@
 {
     "config": {
-        "compression": "lzma"
+        "compression": "zip"
     },
 
     "inherit_example_test_0_base": {
@@ -13,21 +13,21 @@
         "exclude_dirs": ["folder_1/**"]
     },
 
-    "test_0": {
+    "test_100": {
         "inherit": ["inherit_example_test_0_direct"],
         "exclude_files": ["**/data*"],
-        "title": "",
+        "title": "testing section inheritance",
         "expected": [
             "folder_1/file_1"
         ]
     },
 
-    "test_1": {
+    "test_200": {
         "include_files": ["**/file*"],
         "exclude_files": [],
         "include_dirs": [],
         "exclude_dirs": [],
-        "title": "All files starting with 'file'",
+        "title": "All files with name starting with 'file' found anywhere",
         "expected":[
             "file",
             "folder_1/file_1",
@@ -36,16 +36,17 @@
             "folder_1/folder_1_2/file_1_2_1",
             "folder_1/folder_1_3/file_1_3_1",
             "folder_2/file_2",
-            "symlinks/file"
+            "symlinks/file",
+            "symlinks/folder_2/file_2"
         ]
     },
 
-    "test_2": {
+    "test_201": {
         "include_files": [],
         "exclude_files": [],
         "include_dirs": ["folder_1/*"],
         "exclude_dirs": [],
-        "title": "all files in all subfolders",
+        "title": "all files in all subdirectories below folder_1",
         "expected":[
             "folder_1/folder_1_1/data_1_1_1",
             "folder_1/folder_1_1/file_1_1_1",
@@ -54,36 +55,36 @@
         ]
     },
 
-    "test_3": {
+    "test_202": {
         "include_files": ["folder_1/*"],
         "exclude_files": [],
         "include_dirs": [],
         "exclude_dirs": [],
-        "title": "all files in subfolder",
+        "title": "all files located in folder_1",
         "expected":[
             "folder_1/data_1",
             "folder_1/file_1"
         ]
     },
 
-    "test_3b": {
+    "test_203": {
         "include_files": ["folder_1/*", "folder_1/folder_1_1/*"],
         "exclude_files": ["**/folder_1_1/data*"],
         "include_dirs": [],
         "exclude_dirs": [],
-        "title": "all files in two subfolders, no data files from folder 2",
+        "title": "all files in two subfolders but skip data* files in folder_1_1",
         "expected":[
             "folder_1/data_1",
             "folder_1/file_1",
             "folder_1/folder_1_1/file_1_1_1"]
     },
 
-    "test_4": {
+    "test_204": {
         "include_files": ["folder_1/**"],
         "exclude_files": [],
         "include_dirs": [],
         "exclude_dirs": [],
-        "title": "all files in subfolders recursively",
+        "title": "everything in a subfolder recursively",
         "expected":[
             "folder_1/data_1",
             "folder_1/file_1",
@@ -96,9 +97,9 @@
         ]
     },
 
-    "test_5": {
+    "test_205": {
         "include_files": ["**"],
-        "exclude_files": ["**/data*"],
+        "exclude_files": ["**/data**"],
         "include_dirs": [],
         "exclude_dirs": ["symlinks"],
         "title": "all files in subfolders recursively excluding data files",
@@ -114,17 +115,15 @@
         ]
     },
 
-    "exception_1_recursive_inherit": {
-        "inherit": ["exception_1_recursive_inherit"],
-        "title": "inherit recursion failure"
-    },
-
-    "test_symlinks_6A": {
+    "test_300_symlinks": {
         "include_files": ["symlinks/**"],
+        "include_dirs": ["folder_2"],
         "title": "symlinks A",
         "expected":[
+            "folder_2/file_2",
             "symlinks/file",
             "symlinks/folder_2",
+            "symlinks/folder_2/file_2",
             "symlinks/libedip.so",
             "symlinks/libedip.so.1",
             "symlinks/libedip.so.1.0",
@@ -132,7 +131,7 @@
         ]
     },
 
-    "test_symlinks_6B": {
+    "test_301_symlinks": {
         "include_files": ["!libedip", "!symlinks/file"],
         "title": "symlinks B",
         "expected":[
@@ -144,29 +143,51 @@
         ]
     },
 
-    "test_copy_plain_files_with_dest": {
-        "include_files_1": ["@dest", "folder_1/*"],
-        "include_files_2": ["folder_2/*"],
-        "title": "plain files with new destination",
+    "test_400_relocate_plain_files_stripping_path": {
+        "include_files_2": ["@dest_files", "folder_1/folder_1_1/**"],
+        "title": "relocating files with @ operator",
         "expected": [
-            "folder_2/file_2",
-            "dest/data_1",
-            "dest/file_1"
+            "dest_files/data_1_1_1",
+            "dest_files/file_1_1_1",
+            "dest_files/data_1_1_1_1",
+            "dest_files/file_1_1_1_1"
         ]
     },
-
-    "test_copy_symlinks_with_dest": {
+    
+    "test_401_relocate_plain_files_including_path": {
+        "include_files_2": ["@@dest_path", "folder_1/folder_1_1/**"],
+        "title": "relocating files including their original path with @@ operator",
+        "expected": [
+            "dest_path/folder_1/folder_1_1/data_1_1_1",
+            "dest_path/folder_1/folder_1_1/file_1_1_1",
+            "dest_path/folder_1/folder_1_1/folder_1_1_1/data_1_1_1_1",
+            "dest_path/folder_1/folder_1_1/folder_1_1_1/file_1_1_1_1"
+        ]
+    },
+    
+    "test_402_copy_symlinks_with_dest": {
         "include_files": ["file", "@lib", "symlinks/lib*", "@misc", "symlinks/file"],
         "include_dirs": ["symlinks/folder_2", "folder_2"],
         "title": "symlinks with new destination",
         "expected": [
             "file",
             "folder_2/file_2",
+            "symlinks/folder_2/file_2",
             "lib/libedip.so",
             "lib/libedip.so.1",
             "lib/libedip.so.1.0",
             "lib/libedip.so.1.0.0",
             "misc/file"
         ]
+    },
+    
+    "exception_100_relocate_plain_files": {
+        "include_files_1": ["@dest", "!file"],
+        "title": "trying to get 2 files to end up as dest/file which is nonsensical"
+    },
+    
+    "exception_101_recursive_inherit": {
+        "inherit": ["exception_1_recursive_inherit"],
+        "title": "inherit recursion failure"
     }
 }

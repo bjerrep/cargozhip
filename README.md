@@ -10,27 +10,37 @@ Cargozhip tries to fit in where just compressing a folder, or specific subfolder
 
 ```
 ./cargozhip.py -h
-usage: cargozhip [-h] [--root ROOT] [--section SECTION] [--config CONFIG] [--archive ARCHIVE] [--dryrun] [--compression COMPRESSION][--decompress] [--copyroot COPYROOT] 
-[--quiet] [--verbose]
+usage: cargozhip [-h] [--compress source] [--decompress destination] [--copy source] [--archive ARCHIVE] [--destination DESTINATION] [--section SECTION] [--config CONFIG] [--dryrun] [--compression COMPRESSION] [--quiet] [--force] [--verbose]
 
 The slow, configurable and buggy as a complex number asset compressor.
 
 options:
   -h, --help            show this help message and exit
-  --root ROOT           the root folder to work in, default current directory.
+  --compress source     Operation: Compress source directory to archive given by
+  						--archive
+  --decompress destination
+                        Operation: decompress the given archive in the given 
+                        destination (--archive need to be full filename)
+  --copy source         Operation: implies that only the copy part is executed with
+						files copied to destination and left there. The actual
+                        compression part is skipped. Requires --destination
+  --archive ARCHIVE     archive name without extension. Default name is the project
+  						source directory name and default location is current directory.
+                        Used for --compress and --decompress
+  --destination DESTINATION
+                        the destination path for the --copy command
   --section SECTION     the package configuration section name to use
-  --config CONFIG       the package configuration to load. Default "root"/cargozhip.json
-  --archive ARCHIVE     archive name without extension. Default name is the project 
-  						root directory name and default location is current directory
+  --config CONFIG       the cargozhip configuration file to load.
+  						Default ./cargozhip.json
   --dryrun              don't actually make the archive
   --compression COMPRESSION
-                        overrule compressor listed in configuration [lzma| bz2| zip|
-                        tar.gz|tar.bz2|tar.xz]
-  --decompress          decompress the archive in the given root
-  --copyroot COPYROOT   implies that only the copy part is executed with files copied
-                        to copyroot and left there. The actual compression part is
-                        skipped.
+                        overrule compressor listed in configuration
+                        [lzma|bz2|zip|tar.gz|tar.bz2|tar.xz]
   --quiet               no logging, default is informational logging
+  --force               allow --copy and --decompress to write into the destination
+  						root if its not empty. They will default bail out if the
+                        destination has any files in it. Note that any old
+                        cruft will be left untouched
   --verbose             verbose logging
 
 
@@ -82,7 +92,7 @@ Expect the outcome of a lot of intertwined including and excluding to be at leas
 
 ## Relocating
 
-Cargozhip can relocate, or move, files to a new location in the compressed archive. It could be documentation from all over the place that it would be nice to present to users of the archive as a single  ./doc directory or it could be binaries that should be in a single ./bin directory. The move destination for subsequent filters are defined by a leading @. 
+Cargozhip can relocate, or move, files to a new location in the compressed archive. It could be documentation from all over the place that it would be nice to present to users of the archive as a single  ./doc directory or it could be binaries that should be in a single ./bin directory. The move destination for subsequent filters are defined by a string with a leading @ which will then be used as destination for the following entries. 
 
 Example:
 
@@ -99,9 +109,7 @@ Which will eventually unpack to something like
 ./bin/program
 ```
 
-Relocating is newly added and even more likely to go into funny mode than the rest.
-
-
+It is also possible to have relocated files preserve their original path below the given root by using leading @@ rather than @ as in the example above.
 
 ## Cheat sheet
 
@@ -150,7 +158,7 @@ Finds: 			subdir2, file2
 ## Compressing the demo asset.
 
 ```
-./cargozhip.py --section dev --root demo
+./cargozhip.py --section dev --compress demo
 INF Loading configuration file demo/cargozhip.json
 INF Packaging project "demo" section "dev"
 INF Destination archive: /home/user/src/cargozhip/demo.lzma
@@ -191,6 +199,29 @@ Zip file size: 1012 bytes, number of entries: 6
 
 
 
+## Around the world
+
+First make a zip of the demo directory (again), then unzip it and finally make a copy operation. Then it will be interesting to see how the original demo directory compares to the content in the final copy destination. The copy operation is like a compress where the target archive is replaced by straight copies to a directory in the filesystem.
+
+```
+# 1/3 compress to zip archive
+./cargozhip.py --section dev --compress demo --archive testoutput/around_1_compress
+
+# 2/3 decompress to testoutput/around_2_decompress
+./cargozhip.py --section dev --decompress testoutput/around_2_decompress --archive testoutput/around_1_compress.zip
+
+# 3/3 copy the decompressed from
+./cargozhip.py --section dev --copy testoutput/around_2_decompress --destination testoutput/around_3_copy
+```
+
+Now the final around_3_copy directory should be equal to the content of the zip which should be the parts from the demo set given the section "dev".
+
+
+
+There is a test.py which test cargozhip for regressions through both the native python api and also the command line interface as done above. 
+
+
+
 ## Native python
 
 The work is done by the method compress in the cz_api.py. This is what is used by the cargozhip.py executable script which is just a thin command line argument parser. 
@@ -211,5 +242,5 @@ cz_api.compress('test', config, 'default', 'myarchive')
 
 
 
-The cz_api also have a decompress method which is straightforward and a copy method which runs in cargozhip style except it doesn't make an archive but just copies files to a destination directory as they are matched.
+The cz_api also have a decompress method and a copy method.
 

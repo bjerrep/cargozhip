@@ -2,33 +2,43 @@
 import argparse, logging, os, traceback
 from cargozhip import cz
 from cargozhip import cz_api
-from cargozhip.log import err, cri, set_log_colors, logger as log
+from cargozhip.log import err, set_log_colors, logger as log
 
 set_log_colors()
 
 parser = argparse.ArgumentParser('cargozhip', description='''
     The slow, configurable and buggy as a complex number asset compressor.
     ''')
-parser.add_argument('--root', default='.',
-                    help='the root folder to work in, default current directory.')
+#parser.add_argument('--root',
+#                    help='the root folder to work in, default current directory.')
+parser.add_argument('--compress', metavar='source',
+                    help='Operation: Compress source directory to archive given by --archive')
+parser.add_argument('--decompress', metavar='destination',
+                    help='Operation: decompress the given archive in the given destination (--archive need to be full filename)')
+parser.add_argument('--copy', metavar='source',
+                    help='Operation: implies that only the copy part is executed with files copied to destination and left there. '
+                         'The actual compression part is skipped. Requires --destination')
+
+parser.add_argument('--archive',
+                    help='archive name without extension. Default name is the project source directory name '
+                         'and default location is current directory. Used for --compress and --decompress')
+
+parser.add_argument('--destination',
+                    help='the destination path for the --copy command')
+
 parser.add_argument('--section',
                     help='the package configuration section name to use')
 parser.add_argument('--config',
-                    help=f'the package configuration to load. Default "root"/{cz.default_config}')
-parser.add_argument('--archive',
-                    help='archive name without extension. Default name is the project root directory name '
-                         'and default location is current directory')
+                    help=f'the cargozhip configuration file to load. Default ./{cz.default_config}')
 parser.add_argument('--dryrun', action='store_true',
                     help='don\'t actually make the archive')
 parser.add_argument('--compression',
                     help='overrule compressor listed in configuration [lzma|bz2|zip|tar.gz|tar.bz2|tar.xz]')
-parser.add_argument('--decompress', action='store_true',
-                    help='decompress the archive in the given root')
-parser.add_argument('--copyroot',
-                    help='implies that only the copy part is executed with files copied to copyroot and left there. '
-                         'The actual compression part is skipped.')
 parser.add_argument('--quiet', action='store_true',
                     help='no logging, default is informational logging')
+parser.add_argument('--force', action='store_true',
+                    help='allow --copy and --decompress to write into the destination root if its not empty. They will default '
+                         'bail out if the destination has any files in it. Note that any old cruft will be left untouched')
 parser.add_argument('--verbose', action='store_true',
                     help='verbose logging')
 
@@ -42,33 +52,25 @@ try:
     else:
         log.setLevel(logging.INFO)
 
-    if not os.path.exists(args.root):
-        cri(f'Root folder {args.root} not found, "{os.path.join(os.getcwd(), args.root)}"')
-
-    if args.root == '.' or not args.root:
-        root = os.getcwd()
+    if args.compress:
+        if not args.config:
+            config_file = os.path.join(args.compress, cz.default_config)
+        else:
+            config_file = os.path.abspath(args.config)
+        cz_api.compress(args.compress, config_file, args.section, args.archive, args.dryrun, args.compression)
+    elif args.decompress:
+        cz_api.decompress(args.archive, args.decompress, args.force)
+    elif args.copy:
+        if not args.config:
+            config_file = os.path.join(args.copy, cz.default_config)
+        else:
+            config_file = os.path.abspath(args.config)
+        cz_api.copy(args.copy, config_file, args.section, args.destination)
     else:
-        root = os.path.abspath(args.root)
-
-    if not args.config:
-        config_file = os.path.join(root, cz.default_config)
-    else:
-        config_file = os.path.abspath(args.config)
-
-    if not args.archive:
-        archive = os.path.normpath(os.path.join(os.getcwd(), root))
-    else:
-        archive = args.archive
-
-    if args.decompress:
-        cz_api.decompress(archive, root)
-    elif args.copyroot:
-        cz_api.copy(root, config_file, args.section, args.copyroot)
-    else:
-        cz_api.compress(root, config_file, args.section, archive, args.dryrun, args.compression)
+        err('Need an --compress, --decompress or --copy argument')
 
 except Exception as e:
-    err(f'{e.__str__()}')
+    print(f'Terminated with exception: \'{e.__str__()}\'')
     if args.verbose:
         print(traceback.format_exc())
     exit(1)

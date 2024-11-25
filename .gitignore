@@ -1,8 +1,7 @@
 *lzma
 *bz2
 *zip
-compresstest
-copytest
+testoutput
 
 __pycache__
 local

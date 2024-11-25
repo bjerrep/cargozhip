@@ -1,6 +1,6 @@
 {
     "config": {
-        "compression": "lzma"
+        "compression": "zip"
     },
     "basics": {
         "include_files": ["!(?i)license\\.txt", "version.txt", "cargozhip.json"],
