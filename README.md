@@ -78,11 +78,24 @@ Be aware that some archivers fails to make proper symlinks when decompressing, a
 
 
 
-## Config 
+## Configuration 
 
-A config file is a json file intended to reside in each asset cargozhip should work with.
+The configuration file is a json file intended to reside in each asset cargozhip should work with.
 
-As advertised it contains separate entries for files and directories to include and/or exclude for the given asset. The full feature set can be seen in [test/cargozhip.json](test/cargozhip.json).
+As advertised it contains separate entries for files and directories to include and/or exclude for the given asset. A simple configuration file could look like this (the --config argument):
+
+```
+{
+    "config": {
+        "compression": "zip"
+    },
+    "runtime": {
+        "include_dirs": ["lib", "bin"]
+    }
+}
+```
+
+The full feature set can be seen in [test/cargozhip.json](test/cargozhip.json).
 
 Files and directories can be specified in two flavors, either default as "unix filename pattern matching" as used by the python [wcmatch](https://github.com/facelessuser/wcmatch/) module or if starting with a "!", as a regex.
 
@@ -92,7 +105,15 @@ Expect the outcome of a lot of intertwined including and excluding to be at leas
 
 ## Relocating
 
-Cargozhip can relocate, or move, files to a new location in the compressed archive. It could be documentation from all over the place that it would be nice to present to users of the archive as a single  ./doc directory or it could be binaries that should be in a single ./bin directory. The move destination for subsequent filters are defined by a string with a leading @ which will then be used as destination for the following entries. 
+Cargozhip can relocate, or move, files to a new location in the compressed archive. It could be documentation from all over the place that it would be nice to present to users of the archive as a single  ./doc directory or it could be binaries that should be in a single ./bin directory. 
+
+#### Operator @
+
+```
+["@[destination]", "filter1" [, "filter2", ...] ]
+```
+
+Any files found from the filter list will be relocated to the destination root or ./destination if specified. The "@" sign should be interpreted as the destination root "./" so any destination path beyond that is optional. The original path is not preserved, only the actual files
 
 Example:
 
@@ -100,7 +121,7 @@ Example:
 include_files:	["just/as/is", "@inc", "lib1/inc/foo.h", "lib2/inc/bar.h", "@bin", "build/program"]
 ```
 
-Which will eventually unpack to something like
+Which will result in something like
 
 ```
 ./just/as/is
@@ -109,7 +130,33 @@ Which will eventually unpack to something like
 ./bin/program
 ```
 
-It is also possible to have relocated files preserve their original path below the given root by using leading @@ rather than @ as in the example above.
+#### Operator @@
+
+It is also possible to have relocated files preserve their original path below the given search root by using leading @@ rather than @ as in the example above. The output will now be
+
+```
+./just/as/is
+./inc/lib1/inc/foo.h
+./inc/lib2/inc/bar.h
+./bin/build/program
+```
+
+#### Operator @@@
+
+Now the relocated files will preserve the path below the path found in the filter (so far wcmatch ../** only). Remember that the "library/" filter path below might hit somewhere deep inside the source tree, then it might make more sense as to why to have the @@@ operator in the first place.
+
+```
+include_files:	["@@@", "library/**"]
+```
+
+So if there was a "somewhere/library/lib/lib.so" and an "somewhere/library/inc/header.h" this will end up as 
+
+```
+./lib/lib.so
+./inc/header.h
+```
+
+
 
 ## Cheat sheet
 
@@ -138,9 +185,12 @@ include_dirs:	["**/subdir1/**"]
 Finds:			subdir2, file2
 ```
 
-Include everything below a given directory with a regex:
+Include everything below a given directory:
 
 ```
+wcmatch
+include_files:	["subdir1/**"]
+or regex
 include_files:	["!/subdir1/"]
 Finds: 			file1, subdir2, file2
 ```

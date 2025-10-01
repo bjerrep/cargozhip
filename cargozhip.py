@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 import argparse, logging, os, traceback
-from cargozhip import cz
-from cargozhip import cz_api
-from cargozhip.log import err, set_log_colors, logger as log
+
+# In case this script is separated from the default source folder
+# then one option is to specify where to find the 'cargozhipsrc' folder here:
+# import sys
+# sys.path.append('location_hosting_cargozhipsrc')
+
+from cargozhipsrc import cz
+from cargozhipsrc import cz_api
+from cargozhipsrc.log import err, set_log_colors, logger as log
 
 set_log_colors()
 
-parser = argparse.ArgumentParser('cargozhip', description='''
+parser = argparse.ArgumentParser('cargozhipsrc', description='''
     The slow, configurable and buggy as a complex number asset compressor.
     ''')
-#parser.add_argument('--root',
-#                    help='the root folder to work in, default current directory.')
 parser.add_argument('--compress', metavar='source',
                     help='Operation: Compress source directory to archive given by --archive')
 parser.add_argument('--decompress', metavar='destination',
@@ -29,7 +33,7 @@ parser.add_argument('--destination',
 parser.add_argument('--section',
                     help='the package configuration section name to use')
 parser.add_argument('--config',
-                    help=f'the cargozhip configuration file to load. Default ./{cz.default_config}')
+                    help=f'the cargozhipsrc configuration file to load. Default ./{cz.default_config}')
 parser.add_argument('--dryrun', action='store_true',
                     help='don\'t actually make the archive')
 parser.add_argument('--compression',
@@ -40,7 +44,7 @@ parser.add_argument('--force', action='store_true',
                     help='allow --copy and --decompress to write into the destination root if its not empty. They will default '
                          'bail out if the destination has any files in it. Note that any old cruft will be left untouched')
 parser.add_argument('--verbose', action='store_true',
-                    help='verbose logging')
+                    help='verbose logging with exception stacktraces')
 
 args = parser.parse_args()
 

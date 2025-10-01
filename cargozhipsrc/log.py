@@ -54,7 +54,7 @@ def set_log_colors():
 def deb(msg, newline=True):
     if not newline:
         handler.terminator = ''
-    logger.debug('%s%s',indent, msg)
+    logger.debug('%s%s', indent, msg)
     if not newline:
         handler.terminator = '\n'
 
@@ -62,7 +62,7 @@ def deb(msg, newline=True):
 def inf(msg, newline=True):
     if not newline:
         handler.terminator = ''
-    logger.info('%s%s',indent, msg)
+    logger.info('%s%s', indent, msg)
     if not newline:
         handler.terminator = '\n'
 

@@ -143,7 +143,7 @@
         ]
     },
 
-    "test_400_relocate_plain_files_stripping_path": {
+    "test_400_relocate_plain_files_stripping_path_@": {
         "include_files_2": ["@dest_files", "folder_1/folder_1_1/**"],
         "title": "relocating files with @ operator",
         "expected": [
@@ -154,7 +154,7 @@
         ]
     },
     
-    "test_401_relocate_plain_files_including_path": {
+    "test_410_relocate_plain_files_including_full_path_@@": {
         "include_files_2": ["@@dest_path", "folder_1/folder_1_1/**"],
         "title": "relocating files including their original path with @@ operator",
         "expected": [
@@ -164,8 +164,32 @@
             "dest_path/folder_1/folder_1_1/folder_1_1_1/file_1_1_1_1"
         ]
     },
-    
-    "test_402_copy_symlinks_with_dest": {
+
+    "test_420_relocate_plain_files_including_sub_path_@@@": {
+        "include_files_2": ["@@@dest_path", "folder_1/folder_1_1/**"],
+        "title": "relocating files including only subpaths with @@@ operator",
+        "expected": [
+            "dest_path/data_1_1_1",
+            "dest_path/file_1_1_1",
+            "dest_path/folder_1_1_1/data_1_1_1_1",
+            "dest_path/folder_1_1_1/file_1_1_1_1"
+        ]
+    },
+
+    "test_430_relocate_plain_files_including_sub_path_dir_@@@": {
+        "include_dirs": ["@@@dest_path", "folder_1/**"],
+        "title": "relocating files including only subpaths with @@@ operator",
+        "expected": [
+            "folder_1/folder_1_1/data_1_1_1",
+            "folder_1/folder_1_1/file_1_1_1",
+            "folder_1/folder_1_1/folder_1_1_1/data_1_1_1_1",
+            "folder_1/folder_1_1/folder_1_1_1/file_1_1_1_1",
+            "folder_1/folder_1_2/file_1_2_1",
+            "folder_1/folder_1_3/file_1_3_1"
+        ]
+    },
+
+    "test_440_copy_symlinks_with_dest": {
         "include_files": ["file", "@lib", "symlinks/lib*", "@misc", "symlinks/file"],
         "include_dirs": ["symlinks/folder_2", "folder_2"],
         "title": "symlinks with new destination",

@@ -1,6 +1,6 @@
 import os, json, time, zipfile, tarfile, logging, pathlib, shutil, warnings
-from cargozhip.log import inf, war, err, deb, logger as log
-from cargozhip import cz
+from .log import inf, war, err, deb, logger as log
+from . import cz
 
 # force file collisions in zipfile to be fatal rather than a "UserWarning" log message
 warnings.filterwarnings("error")
@@ -141,7 +141,7 @@ def write_archive(root, scan_result, archive, compress_method):
 
 def compress(root, config_or_file, section, archive, dry_run=False, compression=None):
     """
-    The all in one cargozhip operation.
+    The all in one cargozhipsrc operation.
     Scans for files according to a configuration file or dictionary and then writes the archive.
 
     'config_or_file' can be either a filename to a json configuration file or it can be a
@@ -238,7 +238,7 @@ def decompress(archive, destpath, force=False):
                             os.remove(symlink)
                         except:
                             os.rmdir(symlink)
-                        print(symlink_dest)
+                        deb(f'symlink destination "{symlink_dest}"')
                         os.symlink(symlink_dest, symlink)
 
     elif extension in ('.tar.gz', '.tar.bz2', '.xz'):
@@ -248,18 +248,24 @@ def decompress(archive, destpath, force=False):
         raise Exception(f'Cannot decompress from filename extension "{extension}" ?')
 
 
-def copy(root, config_or_file, section, destination):
+def copy(root, config_or_file, section, destination, require_empty_destination=True):
     """
-    Also not part of the core business, but support a copy operation using a cargozhip configuration
+    Also not part of the core business, but support a copy operation using a cargozhipsrc configuration
     file (or a configuration dictionary).
     This allows for a faster/different/otherwise better compression tool to be used rather than the
-    native python compressors in case cargozhip is still useful for just extracting files.
+    native python compressors in case cargozhipsrc is still useful for just extracting files.
     The result hopefully matches the result of a compress() followed by a decompress().
     """
+    if not destination:
+        err('missing a destination')
+    if not section:
+        err('missing a section (from config file)')
+
     try:
         # require the destination to be empty or non-existent
-        if os.listdir(os.path.abspath(destination)):
-            err(f'destination directory {destination} is not empty')
+        if require_empty_destination:
+            if os.listdir(os.path.abspath(destination)):
+                err(f'destination directory {destination} is not empty (see --force)')
     except FileNotFoundError:
         pass
 
@@ -304,7 +310,8 @@ def copy(root, config_or_file, section, destination):
                 os.symlink(src=link, dst=dst_file, target_is_directory=is_dir)
                 symlinked_paths.append(dst_file)
             except FileExistsError:
-                err(f'got FileExists error making symlink {link} to {dst_file}')
+                if require_empty_destination:
+                    err(f'got FileExists error making symlink {link} to {dst_file}')
             except FileNotFoundError:
                 try:
                     # and the destination path is still missing in case this was also a move

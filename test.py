@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json, os, inspect, sys, pathlib, shutil, traceback, filecmp, logging, subprocess
-import cargozhip.cz_api as cz_api
-from cargozhip.log import inf, err, LIGHT_BLUE, RESET, set_log_colors, logger as log
+import cargozhipsrc.cz_api as cz_api
+from cargozhipsrc.log import inf, war, err, LIGHT_BLUE, RESET, set_log_colors, logger as log
 
 TESTOUTPUT = 'testoutput'
 
@@ -43,7 +43,7 @@ def run_test_configuration_test_sections():
             inf(f'Title: {section}: {LIGHT_BLUE}{config[section]["title"]}{RESET}')
             scan_result = cz_api.scan('test', config, section)
             if config[section]['expected'] != scan_result.all_destinations():
-                err('Test failed, this was the scan result:')
+                war('Test failed, this was the scan result:')
                 for file in scan_result.all_destinations():
                     print(f'            "{file}",')
                 err(f'module test {section}')

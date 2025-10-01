@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os, re
 from wcmatch import glob as wcg
-from cargozhip.log import deb, war, Indent, Unindent, WHITEBOLD, YELLOW, LIGHT_BLUE, GREEN, RESET
+from .log import deb, inf, war, Indent, Unindent, WHITEBOLD, YELLOW, LIGHT_BLUE, GREEN, RESET
 
 default_config = 'cargozhip.json'
 depth = 0
@@ -18,14 +18,16 @@ class Filters:
 class ScanResult:
     def __init__(self):
         self.nof_files = 0
+        self.pattern_length = 0
         self.file_list = {}
 
     def add(self, hit):
-        key, filename = hit
+        key, filename, pattern_length = hit
         if not self.file_list.get(key):
             self.file_list[key] = []
         self.file_list[key].append(filename)
         self.nof_files += 1
+        self.pattern_length = pattern_length
 
     def sort(self):
         for key in self.file_list.keys():
@@ -36,7 +38,10 @@ class ScanResult:
         for key, file_list in self.file_list.items():
             for filename in file_list:
                 if key:
-                    if key.startswith('@@'):
+                    if key.startswith('@@@'):
+                        fn = os.path.join(key[3:], filename[self.pattern_length:])
+                        result.append(fn)
+                    elif key.startswith('@@'):
                         fn = os.path.join(key[2:], filename)
                         result.append(fn)
                     else:
@@ -67,7 +72,7 @@ def get_sections(configuration):
     """
     sections = list(configuration.keys())
     try:
-        # the config entry is actually the configuration setup used by cargozhip so get rid of that.
+        # the config entry is actually the configuration setup used by cargozhipsrc so get rid of that.
         sections.remove('config')
     except:
         pass
@@ -91,6 +96,9 @@ def parse_section(config, section, filters=None):
     try:
         _section = config[section]
     except KeyError:
+        for key in config.keys():
+            if key != 'config':
+                inf(f' found section "{key}"')
         raise Exception(f'Section "{section}" not found')
 
     keys = _section.keys()
@@ -106,7 +114,8 @@ def parse_section(config, section, filters=None):
                 dest = None
 
                 for entry in filterentry:
-                    if entry.startswith("@"):
+                    # detect a relocation destination ('@...', '@@...' or '@@@...')
+                    if entry.startswith('@'):
                         dest = entry
                         continue
 
@@ -205,10 +214,12 @@ def check_for_include_file(name, include_files):
         if pattern[0] == '!':
             if re.search(pattern[1:], name):
                 deb(f'include file "{name}" {GREEN}match{RESET} with regex "{pattern}"')
-                return (dest, name)
+                return (dest, name, 0)
         elif wcg.globmatch(name, pattern, flags=wcg.GLOBSTAR):
             deb(f'include file "{name}" {GREEN}match{RESET} with "{pattern}"')
-            return (dest, name)
+            # for now support for @@@ operator works for .../** format only.
+            pattern_length = len(os.path.commonprefix([name, pattern]))
+            return (dest, name, pattern_length)
         else:
             deb(f'include file "{name}" unmatched with "{pattern}"')
     return False
@@ -219,10 +230,11 @@ def check_for_include_dir(directory, name, include_dirs):
         if include_dir[0] == '!':
             if re.search(include_dir[1:], directory):
                 deb(f'include dir  "{name}" {GREEN}match{RESET} with regex "{include_dir}"')
-                return (None, name)
+                return (None, name, 0)
         elif wcg.globmatch(directory, include_dir, flags=wcg.GLOBSTAR):
             deb(f'include dir  "{name}" {GREEN}match{RESET} with "{include_dir}"')
-            return (None, name)
+            pattern_length = len(os.path.commonprefix([name, include_dir]))
+            return (None, name, pattern_length)
         else:
             deb(f'include dir  "{name}" unmatched with "{include_dir}"')
     return False
